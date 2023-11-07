@@ -1,0 +1,469 @@
+# Setup
+###########################################################################
+# add these three lines to config and fill in bot_token and chat_id
+# main.plugins.neonbot.enabled = false
+# main.plugins.neonbot.bot_token = ""
+# main.plugins.neonbot.chat_id = ""
+# sudo pip3 install python-telegram-bot==13.15 qrcode tomli_w
+# bot token add @BotFather and setup your bot. it will give you your token
+# chat id add @RawDataBot and find chat id
+import pwnagotchi, logging, os, qrcode, csv, html, subprocess, random, hashlib, time, re, tomli_w, urllib.request, glob, shutil, json
+import pwnagotchi.plugins as plugins
+from itertools import islice
+from PIL import Image, ImageDraw, ImageFont
+from telegram.ext import CommandHandler, Updater, CallbackContext, MessageHandler, Filters
+from pwnagotchi import config
+
+class neonbot(plugins.Plugin):
+    __author__ = 'NeonLightning'
+    __version__ = '0.8.0'
+    __license__ = 'GPL3'
+    __description__ = 'Telegram QR and control bot.'
+
+    def __init__(self):
+        self.qrlist_path = "/root/.qrlist"
+        self.qrcode_dir = '/root/qrcodes/'
+        #self.locdata_path = '/root/locdata/'
+        self.locdata_path = '/root/handshakes/'
+        self.bot_token = None
+        self.chat_id = None
+        self.bot = None
+        self.updater = None
+        self.bot_running = False
+        self.all_bssid = []
+        self.all_ssid = []
+        self.all_passwd = []
+        self.file_list = []
+
+    def on_loaded(self):
+        logging.info("[neonbot] Loading...")
+        self.bot_token = config['main']['plugins']['neonbot']['bot_token']
+        self.chat_id = config['main']['plugins']['neonbot']['chat_id']
+        logging.info("[neonbot] Configured...")
+        self.bot_running = False
+        logging.info("[neonbot] Loading updater...")
+        self.updater = Updater(token=self.bot_token, use_context=True)
+        logging.info("[neonbot] Updater Loaded...")
+        self.updater.dispatcher.add_handler(CommandHandler('xyzzy', self.important_command))
+        self.updater.dispatcher.add_handler(CommandHandler('genqrcodes', self.genqrcodes_command))
+        self.updater.dispatcher.add_handler(CommandHandler('restart', self.restart_command))
+        self.updater.dispatcher.add_handler(CommandHandler('reboot', self.reboot_command))
+        self.updater.dispatcher.add_handler(CommandHandler('shutdown', self.shutdown_command))
+        self.updater.dispatcher.add_handler(CommandHandler('run', self.run_command))
+        self.updater.dispatcher.add_handler(CommandHandler('qr_files', self.qr_files))
+        self.updater.dispatcher.add_handler(CommandHandler('stats', self.stats_command))
+        self.updater.dispatcher.add_handler(CommandHandler('screencap', self.screencap_command))
+        self.updater.dispatcher.add_handler(CommandHandler('help', self.help_command))
+        self.updater.dispatcher.add_handler(MessageHandler(Filters.command, self.help_command))
+        logging.info("[neonbot] Loaded.")
+        while True:
+            if self._is_internet_available():
+                if self.bot_running:
+                    pass
+                else:
+                    logging.info("[neonbot] Bot started.")
+                    self.bot_running = True
+                    self.updater.start_polling()
+                    self.bot.send_message(chat_id=self.chat_id, text="Bot started due to internet availability.")
+            else:
+                if self.bot_running:
+                    self.updater.stop()
+                    self.updater.is_idle = False
+                    logging.info("[neonbot] Bot stopped due to no internet connectivity.")
+                    self.bot_running = False
+                logging.info("[neonbot] Internet is not available, update skipped.")
+            time.sleep(30)
+
+    def on_unload(self, agent):
+        if self.updater is not None:
+            logging.info("[neonbot] Unloaded.")
+            self.updater.stop()
+
+    def on_internet_available(self, agent):
+        if self._is_internet_available():
+            if self.bot_running:
+                logging.info("[neonbot] Bot running")
+            else:
+                logging.info("[neonbot] Bot started.")
+                self.bot_running = True
+                self.updater.start_polling()
+                self.bot.send_message(chat_id=self.chat_id, text="Bot started due to internet availability. on_internet")
+        else:
+            if self.bot_running:
+                self.updater.stop()
+                self.updater.is_idle = False
+                logging.info("[neonbot] Bot stopped due to no internet connectivity.")
+                self.bot_running = False
+            logging.info("[neonbot] Internet is not available, update skipped.")
+
+    def on_epoch(self):
+        if self._is_internet_available():
+            if self.bot_running:
+                pass
+            else:
+                logging.info("[neonbot] Bot started.")
+                self.bot_running = True
+                self.updater.start_polling()
+                self.bot.send_message(chat_id=self.chat_id, text="Bot started due to internet availability. on_epoch")
+        else:
+            if self.bot_running:
+                self.updater.stop()
+                self.updater.is_idle = False
+                logging.info("[neonbot] Bot stopped due to no internet connectivity.")
+                self.bot_running = False
+            logging.info("[neonbot] Internet is not available, update skipped.")
+
+    def _qr_generation(self, update, context):
+        try:
+            self._read_wpa_sec_file()
+        except FileNotFoundError:
+            return
+        try:
+            self._read_onlinehashcrack_file()
+        except FileNotFoundError:
+            return
+        for bssid, ssid, password in zip(self.all_bssid, self.all_ssid, self.all_passwd):
+            if not os.path.exists(self.qrcode_dir):
+                os.makedirs(self.qrcode_dir)
+            png_filepath = os.path.join(f"{self.qrcode_dir}{ssid}-{password}-{bssid.lower().replace(':', '')}.png")
+            filename = f"{ssid}-{password}-{bssid.lower().replace(':', '')}.png"
+            if os.path.exists(png_filepath):
+                continue
+            if os.path.exists(self.qrlist_path):
+                with open(self.qrlist_path, 'r') as qrlist_file:
+                    qrlist = qrlist_file.read().splitlines()
+                    if filename in qrlist:
+                        continue
+            qr_data = f"WIFI:T:WPA;S:{html.escape(ssid)};P:{html.escape(password)};;"
+            qr_code = qrcode.QRCode(
+                version=None,
+                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                box_size=10,
+                border=4,
+            )
+            qr_code.add_data(qr_data)
+            qr_code.make(fit=True)
+            try:
+                if os.path.exists(self.qrlist_path):
+                    with open(self.qrlist_path, 'r') as qrlist_file:
+                        qrlist = qrlist_file.read().splitlines()
+                        if png_filepath in qrlist:
+                            continue
+                else:
+                    open(self.qrlist_path, 'w+').close()
+                img = qr_code.make_image(fill_color="yellow", back_color="black")
+                img.save(png_filepath)
+            except Exception as e:
+                logging.error(f"[neonbot] something went wrong generating QR code for {ssid}-{password}-{bssid.lower().replace(':', '')}: {e}")
+
+    def _bot_starting(self):
+        if self._is_internet_available():
+            if self.bot_running:
+                return
+            else:
+                self.bot_running = True
+                logging.info("[neonbot] Bot started.")
+                self.updater.start_polling()
+        else:
+            if self.bot_running:
+                self.updater.stop()
+                self.updater.is_idle = False
+                logging.info("[neonbot] Bot stopped due to no internet connectivity.")
+                self.bot_running = False
+            logging.info("[neonbot] Internet is not available, update skipped.")
+
+    def _is_internet_available(self):
+        try:
+            urllib.request.urlopen('https://www.google.com', timeout=1)
+            return True
+        except urllib.request.URLError:
+            return False
+        
+    def _read_wpa_sec_file(self):
+        wpa_sec_filepath = '/root/handshakes/wpa-sec.cracked.potfile'
+        try:
+            with open(wpa_sec_filepath, 'r+', encoding='utf-8') as f:
+                for line_f in f:
+                    pwd_f = line_f.split(':')
+                    self.all_passwd.append(str(pwd_f[-1].rstrip('\n')))
+                    self.all_bssid.append(str(pwd_f[0]))
+                    self.all_ssid.append(str(pwd_f[-2]))
+        except:
+            pass
+
+    def _read_onlinehashcrack_file(self):
+        onlinehashcrack_filepath = '/root/handshakes/onlinehashcrack.cracked'
+        try:
+            with open(onlinehashcrack_filepath, 'r+', encoding='utf-8') as h:
+                reader = csv.DictReader(h)
+                for line_h in reader:
+                    try:
+                        pwd_h = str(line_h['password'])
+                        bssid_h = str(line_h['BSSID'])
+                        ssid_h = str(line_h['ESSID'])
+                        if pwd_h and bssid_h and ssid_h:
+                            self.all_passwd.append(pwd_h)
+                            self.all_bssid.append(bssid_h)
+                            self.all_ssid.append(ssid_h)
+                    except csv.Error as e:
+                        continue
+                h.close()
+        except Exception as e:
+            logging.error(f"[neonbot] Encountered a problem in onlinehashcrack.cracked: {str(e)}")
+
+    def _get_cpu_usage(self):
+        try:
+            cpu_output = subprocess.check_output("grep 'cpu ' /proc/stat", shell=True, universal_newlines=True)
+            cpu_fields = cpu_output.split()
+            total_time = sum(map(int, cpu_fields[1:]))
+            idle_time = int(cpu_fields[4])
+            usage = (1 - idle_time / total_time) * 100
+            return int(usage)
+        except Exception as e:
+            return -1
+
+    def _get_memory_usage(self):
+        try:
+            mem_output = subprocess.check_output("free -m", shell=True, universal_newlines=True)
+            lines = mem_output.split('\n')
+            mem_info = lines[1].split()
+            total_mem = int(mem_info[1])
+            used_mem = int(mem_info[2])
+            mem_usage = (used_mem / total_mem) * 100
+            return int(mem_usage)
+        except Exception as e:
+            return -1
+
+    def _get_cpu_temperature(self):
+        try:
+            temp_output = subprocess.check_output("cat /sys/class/thermal/thermal_zone0/temp", shell=True, universal_newlines=True)
+            temperature = int(temp_output) / 1000
+            return temperature
+        except Exception as e:
+            return -1
+
+    def _get_ipv4_address(self, interface):
+        try:
+            ip_output = subprocess.check_output(f"ifconfig {interface}", shell=True, universal_newlines=True)
+            ip_address = re.search(r'inet\s+(\d+\.\d+\.\d+\.\d+)', ip_output)
+            if ip_address:
+                return ip_address.group(1)
+            return "N/A"
+        except Exception as e:
+            return "N/A"
+
+    def _composite_text_on_background(self, output_text, output_image_path):
+        default_background = "/home/pi/custom_plugins/default_background.png"
+        if not os.path.exists(default_background):
+            with Image.new('RGB', (250, 122), (128, 0, 128)) as img:
+                img.save(default_background)
+        with Image.open(default_background) as img:
+            draw = ImageDraw.Draw(img)
+            font_path = '/home/pi/custom_plugins/DejaVuSansMono.ttf'
+            font_size = 14
+            font = ImageFont.truetype(font_path, font_size)
+            text_x = 10
+            text_y = 20
+            draw.text((text_x, text_y), output_text, font=font, fill=(0,0,0))
+            img.save(output_image_path)
+            img.close()
+    
+    def _send_output(self, update, context, output_lines, max_lines):
+        if len(output_lines) <= 50:
+            output_text = "".join(output_lines)
+            context.bot.send_message(chat_id=self.chat_id, text=f"Command Output:\n{output_text}")
+        else:
+            context.bot.send_message(chat_id=self.chat_id, text="Output longer than 50 lines.")
+            if len(output_lines) <= max_lines:
+                output_text = "".join(output_lines)
+            else:
+                output_text = "".join(output_lines[:max_lines])
+                with open('/home/pi/output.txt', 'w') as output_file:
+                    output_file.write("\n".join(line.rstrip() for line in output_lines[:max_lines]))
+                context.bot.send_document(chat_id=self.chat_id, document=open('/root/output.txt', 'rb'))
+                os.remove('/home/pi/output.txt')
+
+    def _move_geojson_files(self):
+        geojson_files = glob.glob("/root/handshakes/*.geo.json")
+        for geojson_file in geojson_files:
+            try:
+                destination_path = os.path.join(self.locdata_path, os.path.basename(geojson_file))
+                shutil.move(geojson_file, destination_path)
+                print(f"Moved {os.path.basename(geojson_file)} to {destination_path}")
+            except Exception as e:
+                print(f"Error moving {os.path.basename(geojson_file)}: {str(e)}")
+
+    def screencap_command(self, update, context):
+        photo_path = '/var/tmp/pwnagotchi/pwnagotchi.png'
+        with Image.open(photo_path) as img:
+            img = img.resize((img.width * 2, img.height * 2), Image.ANTIALIAS)
+            temp_path = '/var/tmp/pwnagotchi/resized_pwnagotchi.png'
+            img.save(temp_path)
+        with open(temp_path, 'rb') as photo_file:
+            context.bot.send_photo(chat_id=update.message.chat_id, photo=photo_file)
+        os.remove(temp_path)
+
+    def stats_command(self, update, context):
+        args = context.args
+        output_image_path = "/root/stats.png"
+        cpu = self._get_cpu_usage()
+        memory = self._get_memory_usage()
+        temperature = self._get_cpu_temperature()
+        wlan0_ip = self._get_ipv4_address("wlan0")
+        usb0_ip = self._get_ipv4_address("usb0")
+        eth0_ip = self._get_ipv4_address("eth0")
+        bnep0_ip = self._get_ipv4_address("bnep0")
+        composite_output_text = f"CPU:{cpu}%  Mem:{memory}%\nCPU:{temperature:.0f}°\nETH0:{eth0_ip}\nUSB0:{usb0_ip}\nWLN0:{wlan0_ip}\nBT :{bnep0_ip}"
+        if 'image' in args:
+            result = self._composite_text_on_background(composite_output_text, output_image_path)
+            if result == -1:
+                context.bot.send_message(chat_id=self.chat_id, text="Error generating the stats image.")
+            else:
+                with open(output_image_path, 'rb') as image_file:
+                    context.bot.send_photo(chat_id=self.chat_id, photo=image_file)
+        else:
+            context.bot.send_message(chat_id=self.chat_id, text=composite_output_text)
+
+    def genqrcodes_command(self, update, context):
+        self._qr_generation(update, context)
+        context.bot.send_message(chat_id=self.chat_id, text="QR codes generated successfully!")
+
+    def important_command(self, update, context):
+        super_secret_seed = int(time.time()) * 42 % 1001
+        random_number = random.randint(super_secret_seed, super_secret_seed + 1000)
+        hash_object = hashlib.sha256(str(random_number).encode())
+        hex_dig = hash_object.hexdigest()
+        reversed_hex = hex_dig[::-1]
+        shuffled_hex = ''.join(random.sample(reversed_hex, len(reversed_hex)))
+        for _ in range(len(shuffled_hex)):
+            shuffled_hex = shuffled_hex[1:] + shuffled_hex[0]
+        for i in range(len(shuffled_hex)):
+            if i % 2 == 0:
+                shuffled_hex = shuffled_hex[:i] + shuffled_hex[i].upper() + shuffled_hex[i+1:]
+        result = sum(int(digit, 16) for digit in shuffled_hex)
+        if result % 2 == 0:
+            response = "It Does Something."
+        else:
+            response = "It Does Nothing."
+        context.bot.send_message(chat_id=self.chat_id, text=response)
+
+    def run_command(self, update, context):
+        if update.message is None:
+            context.bot.send_message(chat_id=self.chat_id, text="This command must be invoked with a message.")
+            return
+        args = context.args
+        if args:
+            command = " ".join(args)
+            context.bot.send_message(chat_id=self.chat_id, text=f"Running command: {command}")
+            try:
+                os.chdir('/home/pi')
+                result = subprocess.Popen(
+                    f"sudo -u pi {command}",
+                    shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                    universal_newlines=True,
+                )
+                output_lines = []
+                max_lines = 1000
+                line_count = 0
+                for line in iter(result.stdout.readline, ''):
+                    if line_count < max_lines:
+                        output_lines.append(line)
+                    line_count += 1
+                    if line_count > max_lines:
+                        break
+                result.stdout.close()
+                self._send_output(update, context, output_lines, max_lines)
+            except subprocess.TimeoutExpired:
+                self._send_output(update, context, output_lines, max_lines)
+                context.bot.send_message(chat_id=self.chat_id, text="Command execution timed out.")
+            except Exception as e:
+                context.bot.send_message(chat_id=self.chat_id, text=f"Error executing command: {str(e)}")
+            finally:
+                os.chdir('/tmp')
+        else:
+            context.bot.send_message(chat_id=self.chat_id, text="Usage: /command <command> [arguments]")
+
+    def restart_command(self, update, context):
+        logging.info("[neonbot] restarting pwny")
+        context.bot.send_message(chat_id=self.chat_id, text="[neonbot] restarting pwny")
+        subprocess.run(["sudo", "touch", "/root/.pwnagotchi-auto"])
+        subprocess.run(["sudo", "systemctl", "restart", "pwnagotchi"])
+
+    def reboot_command(self, update, context):
+        logging.info("[neonbot] rebooting")
+        context.bot.send_message(chat_id=self.chat_id, text="[neonbot] rebooting")
+        subprocess.run(["sudo", "touch", "/root/.pwnagotchi-auto"])
+        subprocess.run(["sudo", "shutdown", "-r", "now"])
+
+    def shutdown_command(self, update, context):
+        logging.info("[neonbot] shutting down")
+        context.bot.send_message(chat_id=self.chat_id, text="[neonbot] shutting down")
+        subprocess.run(["sudo", "touch", "/root/.pwnagotchi-auto"])
+        subprocess.run(["sudo", "shutdown", "-h", "now"])
+
+    def qr_files(self, update, context):
+        args = context.args
+        idx_start = 1
+        if args and args[0].strip():
+            try:
+                selected_number = int(args[0])
+                if 1 <= selected_number <= len(os.listdir(self.qrcode_dir)):
+                    selected_file = os.listdir(self.qrcode_dir)[selected_number - 1]
+                    ssid_n_pass = selected_file.rsplit('-', 1)[-2]
+                    bssid = selected_file.rsplit('-', 1)[-1].rsplit('.', 1)[0].lower().replace(':', '')
+                    with open(f"{self.qrcode_dir}{selected_file}", 'rb') as f:
+                        caption = f"^^^ {ssid_n_pass}"
+                        geojson_files = glob.glob(f"/root/handshakes/*_{bssid}.geo.json")
+                        geojson_files += glob.glob(f"{self.locdata_path}*_{bssid}.geo.json")
+                        if geojson_files:
+                            geojson_file = geojson_files[0]
+                            destination_path = os.path.join(self.locdata_path, os.path.basename(geojson_file))
+                            if geojson_file != destination_path:
+                                shutil.copy(geojson_file, destination_path)
+                            data = json.load(open(geojson_file, 'r'))
+                            lat = data['location']['lat']
+                            lng = data['location']['lng']
+                            caption += f"\nLat: {lat}, Lng: {lng}"
+                        self.bot.send_photo(self.chat_id, f, caption)
+                else:
+                    context.bot.send_message(chat_id=self.chat_id, text="Invalid file number.")
+            except ValueError:
+                context.bot.send_message(chat_id=self.chat_id, text="Please enter a valid number.")
+        else:
+            self.file_list.clear()
+            self._move_geojson_files()
+            for idx, filename in enumerate(os.listdir(self.qrcode_dir), start=1):
+                if filename.lower().endswith('.png'):
+                    file_name = filename.split('.')[0]
+                    bssid = file_name.split('-')[-1]
+                    geojson_files = glob.glob(f"/root/handshakes/*_{bssid}.geo.json")
+                    geojson_files += glob.glob(f"{self.locdata_path}*_{bssid}.geo.json")
+                    if geojson_files:
+                        filename += " *geodata*"
+                    self.file_list.append(filename)
+                if idx % 30 == 0 or idx == len(os.listdir(self.qrcode_dir)):
+                    file_list_text = "\n".join([f"{i}. {fn}" for i, fn in enumerate(self.file_list, start=idx_start)])
+                    context.bot.send_message(chat_id=self.chat_id, text=file_list_text)
+                    self.file_list.clear()
+                    idx_start = idx + 1
+
+    def help_command(self, update, context):
+        command_list = [
+            'Try One Of These',
+            '/genqrcodes - Initialize or update qr codes',
+            '/screencap - Send capture of current pwnagotchi face',
+            '/stats - Send brief system info',
+            '/qr_files - List all available qr codes',
+            '/qr_files # - QR and login displayed for selection',
+            '/run (command) - Run cmd and provide stdout',
+            '/restart - Restart Pwnagotchi',
+            '/reboot - Reboot the system',
+            '/shutdown - Shutdown the system',
+            '/help - Show this help message'
+        ]
+        help_message = "\n".join(command_list)
+        context.bot.send_message(chat_id=self.chat_id, text=help_message)
