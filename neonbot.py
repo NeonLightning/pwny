@@ -7,7 +7,7 @@
 # sudo pip3 install python-telegram-bot==13.15 qrcode tomli_w
 # bot token add @BotFather and setup your bot. it will give you your token
 # chat id add @RawDataBot and find chat id
-import pwnagotchi, logging, os, qrcode, csv, html, subprocess, random, hashlib, time, re, tomli_w, urllib.request, glob, shutil, json
+import pwnagotchi, logging, os, qrcode, csv, html, subprocess, random, hashlib, time, re, urllib.request, glob, shutil, json
 import pwnagotchi.plugins as plugins
 from itertools import islice
 from PIL import Image, ImageDraw, ImageFont
@@ -27,7 +27,6 @@ class neonbot(plugins.Plugin):
         self.locdata_path = '/root/handshakes/'
         self.bot_token = None
         self.chat_id = None
-        self.bot = None
         self.updater = None
         self.bot_running = False
         self.all_bssid = []
@@ -64,7 +63,7 @@ class neonbot(plugins.Plugin):
                     logging.info("[neonbot] Bot started.")
                     self.bot_running = True
                     self.updater.start_polling()
-                    self.bot.send_message(chat_id=self.chat_id, text="Bot started due to internet availability.")
+                    self.updater.bot.send_message(chat_id=self.chat_id, text="Bot started due to internet availability.")
             else:
                 if self.bot_running:
                     self.updater.stop()
@@ -87,7 +86,8 @@ class neonbot(plugins.Plugin):
                 logging.info("[neonbot] Bot started.")
                 self.bot_running = True
                 self.updater.start_polling()
-                self.bot.send_message(chat_id=self.chat_id, text="Bot started due to internet availability. on_internet")
+                self.updater.bot.send_message(chat_id=self.chat_id, text="Bot started due to internet availability.")
+                
         else:
             if self.bot_running:
                 self.updater.stop()
@@ -96,7 +96,7 @@ class neonbot(plugins.Plugin):
                 self.bot_running = False
             logging.info("[neonbot] Internet is not available, update skipped.")
 
-    def on_epoch(self):
+    def on_epoch(self, context):
         if self._is_internet_available():
             if self.bot_running:
                 pass
@@ -104,7 +104,7 @@ class neonbot(plugins.Plugin):
                 logging.info("[neonbot] Bot started.")
                 self.bot_running = True
                 self.updater.start_polling()
-                self.bot.send_message(chat_id=self.chat_id, text="Bot started due to internet availability. on_epoch")
+                self.updater.bot.send_message(chat_id=self.chat_id, text="Bot started due to internet availability.")
         else:
             if self.bot_running:
                 self.updater.stop()
@@ -428,7 +428,7 @@ class neonbot(plugins.Plugin):
                             lat = data['location']['lat']
                             lng = data['location']['lng']
                             caption += f"\nLat: {lat}, Lng: {lng}"
-                        self.bot.send_photo(self.chat_id, f, caption)
+                        context.bot.send_photo(self.chat_id, f, caption)
                 else:
                     context.bot.send_message(chat_id=self.chat_id, text="Invalid file number.")
             except ValueError:
