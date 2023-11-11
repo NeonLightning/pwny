@@ -426,7 +426,9 @@ class neonbot(plugins.Plugin):
                             lng = data['location']['lng']
                             google_maps_link = f"https://www.google.com/maps?q={lat},{lng}"
                             caption += f"\n[Location Long: {lng} Lat:{lat}]({google_maps_link})"
-                        context.bot.send_photo(self.chat_id, f, caption, parse_mode="Markdown")
+                            context.bot.send_photo(self.chat_id, f, caption, parse_mode="Markdown")
+                        else:
+                            context.bot.send_photo(self.chat_id, f, caption)
                 else:
                     context.bot.send_message(chat_id=self.chat_id, text="Invalid file number.")
             except ValueError:
@@ -443,9 +445,9 @@ class neonbot(plugins.Plugin):
                     if geojson_files:
                         filename += " *geodata*"
                     self.file_list.append(filename)
-                if idx % 30 == 0 or idx == len(os.listdir(self.qrcode_dir)):
+                if idx % 20 == 0 or idx == len(os.listdir(self.qrcode_dir)):
                     file_list_text = "\n".join([f"{i}. {fn}" for i, fn in enumerate(self.file_list, start=idx_start)])
-                    context.bot.send_message(chat_id=self.chat_id, text=file_list_text, parse_mode="Markdown")
+                    context.bot.send_message(chat_id=self.chat_id, text=file_list_text)
                     self.file_list.clear()
                     idx_start = idx + 1
 
