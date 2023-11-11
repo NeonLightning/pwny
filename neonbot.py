@@ -7,7 +7,7 @@
 # sudo pip3 install python-telegram-bot==13.15 qrcode tomli_w
 # bot token add @BotFather and setup your bot. it will give you your token
 # chat id add @RawDataBot and find chat id
-import pwnagotchi, logging, os, qrcode, csv, html, subprocess, random, hashlib, time, re, urllib.request, glob, shutil, json
+import pwnagotchi, logging, os, qrcode, csv, html, subprocess, random, hashlib, time, re, urllib.request, glob, shutil, json, telegram.error
 import pwnagotchi.plugins as plugins
 from itertools import islice
 from PIL import Image, ImageDraw, ImageFont
@@ -34,81 +34,29 @@ class neonbot(plugins.Plugin):
         self.all_passwd = []
         self.file_list = []
 
-    def on_loaded(self):
-        logging.info("[neonbot] Loading...")
-        self.bot_token = config['main']['plugins']['neonbot']['bot_token']
-        self.chat_id = config['main']['plugins']['neonbot']['chat_id']
-        logging.info("[neonbot] Configured...")
-        self.bot_running = False
-        logging.info("[neonbot] Loading updater...")
-        self.updater = Updater(token=self.bot_token, use_context=True)
-        logging.info("[neonbot] Updater Loaded...")
-        self.updater.dispatcher.add_handler(CommandHandler('xyzzy', self.important_command))
-        self.updater.dispatcher.add_handler(CommandHandler('genqrcodes', self.genqrcodes_command))
-        self.updater.dispatcher.add_handler(CommandHandler('restart', self.restart_command))
-        self.updater.dispatcher.add_handler(CommandHandler('reboot', self.reboot_command))
-        self.updater.dispatcher.add_handler(CommandHandler('shutdown', self.shutdown_command))
-        self.updater.dispatcher.add_handler(CommandHandler('run', self.run_command))
-        self.updater.dispatcher.add_handler(CommandHandler('qr_files', self.qr_files))
-        self.updater.dispatcher.add_handler(CommandHandler('stats', self.stats_command))
-        self.updater.dispatcher.add_handler(CommandHandler('screencap', self.screencap_command))
-        self.updater.dispatcher.add_handler(CommandHandler('help', self.help_command))
-        self.updater.dispatcher.add_handler(MessageHandler(Filters.command, self.help_command))
-        logging.info("[neonbot] Loaded.")
-        while True:
+    def _startstopbot(self, update):
+        try:
             if self._is_internet_available():
-                if self.bot_running:
-                    pass
-                else:
+                if not self.bot_running:
                     logging.info("[neonbot] Bot started.")
                     self.bot_running = True
                     self.updater.start_polling()
                     self.updater.bot.send_message(chat_id=self.chat_id, text="Bot started due to internet availability.")
             else:
                 if self.bot_running:
-                    self.updater.stop()
-                    self.updater.is_idle = False
+                    try:
+                        self.updater.stop()
+                        self.updater.is_idle = False
+                    except telegram.error.Conflict as conflict_error:
+                        logging.warning(f"[neonbot] Conflict error when stopping the bot: {conflict_error}")
                     logging.info("[neonbot] Bot stopped due to no internet connectivity.")
                     self.bot_running = False
-                logging.info("[neonbot] Internet is not available, update skipped.")
-            time.sleep(30)
-
-    def on_unload(self, agent):
-        if self.updater is not None:
-            logging.info("[neonbot] Unloaded.")
-            self.updater.stop()
-
-    def on_internet_available(self, agent):
-        if self._is_internet_available():
-            if not self.bot_running:
-                logging.info("[neonbot] Bot started.")
-                self.bot_running = True
-                self.updater.start_polling()
-                self.updater.bot.send_message(chat_id=self.chat_id, text="Bot started due to internet availability.")
-        else:
-            if self.bot_running:
-                self.updater.stop()
-                self.updater.is_idle = False
-                logging.info("[neonbot] Bot stopped due to no internet connectivity.")
-                self.bot_running = False
-            logging.info("[neonbot] Internet is not available, update skipped.")
-
-    def on_epoch(self, context):
-        if self._is_internet_available():
-            if self.bot_running:
-                pass
-            else:
-                logging.info("[neonbot] Bot started.")
-                self.bot_running = True
-                self.updater.start_polling()
-                self.updater.bot.send_message(chat_id=self.chat_id, text="Bot started due to internet availability.")
-        else:
-            if self.bot_running:
-                self.updater.stop()
-                self.updater.is_idle = False
-                logging.info("[neonbot] Bot stopped due to no internet connectivity.")
-                self.bot_running = False
-            logging.info("[neonbot] Internet is not available, update skipped.")
+        except ConnectionResetError as e:
+            logging.error(f"[neonbot] Connection reset error: {e}")
+        except telegram.error.Conflict as conflict_error:
+            logging.error(f"[neonbot] Conflict error: {conflict_error}")
+        except Exception as e:
+            logging.error(f"[neonbot] An error occurred: {e}")
 
     def _qr_generation(self, update, context):
         try:
@@ -468,3 +416,53 @@ class neonbot(plugins.Plugin):
         ]
         help_message = "\n".join(command_list)
         context.bot.send_message(chat_id=self.chat_id, text=help_message)
+
+    def on_loaded(self):
+        logging.info("[neonbot] Loading...")
+        self.bot_token = config['main']['plugins']['neonbot']['bot_token']
+        self.chat_id = config['main']['plugins']['neonbot']['chat_id']
+        logging.info("[neonbot] Configured...")
+        self.bot_running = False
+        logging.info("[neonbot] Loading updater...")
+        self.updater = Updater(token=self.bot_token, use_context=True)
+        logging.info("[neonbot] Updater Loaded...")
+        self.updater.dispatcher.add_handler(CommandHandler('xyzzy', self.important_command))
+        self.updater.dispatcher.add_handler(CommandHandler('genqrcodes', self.genqrcodes_command))
+        self.updater.dispatcher.add_handler(CommandHandler('restart', self.restart_command))
+        self.updater.dispatcher.add_handler(CommandHandler('reboot', self.reboot_command))
+        self.updater.dispatcher.add_handler(CommandHandler('shutdown', self.shutdown_command))
+        self.updater.dispatcher.add_handler(CommandHandler('run', self.run_command))
+        self.updater.dispatcher.add_handler(CommandHandler('qr_files', self.qr_files))
+        self.updater.dispatcher.add_handler(CommandHandler('stats', self.stats_command))
+        self.updater.dispatcher.add_handler(CommandHandler('screencap', self.screencap_command))
+        self.updater.dispatcher.add_handler(CommandHandler('help', self.help_command))
+        self.updater.dispatcher.add_handler(MessageHandler(Filters.command, self.help_command))
+        logging.info("[neonbot] Loaded.")
+        while True:
+            if self._is_internet_available():
+                if self.bot_running:
+                    pass
+                else:
+                    logging.info("[neonbot] Bot started.")
+                    self.bot_running = True
+                    self.updater.start_polling()
+                    self.updater.bot.send_message(chat_id=self.chat_id, text="Bot started due to internet availability.")
+            else:
+                if self.bot_running:
+                    self.updater.stop()
+                    self.updater.is_idle = False
+                    logging.info("[neonbot] Bot stopped due to no internet connectivity.")
+                    self.bot_running = False
+                logging.info("[neonbot] Internet is not available, update skipped.")
+            time.sleep(30)
+
+    def on_unload(self, agent):
+        if self.updater is not None:
+            logging.info("[neonbot] Unloaded.")
+            self.updater.stop()
+
+    def on_internet_available(self, agent):
+        self._startstopbot()
+
+    def on_epoch(self, context):
+        self._startstopbot
