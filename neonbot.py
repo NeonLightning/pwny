@@ -101,22 +101,6 @@ class neonbot(plugins.Plugin):
             except Exception as e:
                 logging.error(f"[neonbot] something went wrong generating QR code for {ssid}-{password}-{bssid.lower().replace(':', '')}: {e}")
 
-    def _bot_starting(self):
-        if self._is_internet_available():
-            if self.bot_running:
-                return
-            else:
-                self.bot_running = True
-                logging.info("[neonbot] Bot started.")
-                self.updater.start_polling()
-        else:
-            if self.bot_running:
-                self.updater.stop()
-                self.updater.is_idle = False
-                logging.info("[neonbot] Bot stopped due to no internet connectivity.")
-                self.bot_running = False
-            logging.info("[neonbot] Internet is not available, update skipped.")
-
     def _is_internet_available(self):
         try:
             urllib.request.urlopen('https://www.google.com', timeout=1)
