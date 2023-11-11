@@ -80,14 +80,11 @@ class neonbot(plugins.Plugin):
 
     def on_internet_available(self, agent):
         if self._is_internet_available():
-            if self.bot_running:
-                logging.info("[neonbot] Bot running")
-            else:
+            if not self.bot_running:
                 logging.info("[neonbot] Bot started.")
                 self.bot_running = True
                 self.updater.start_polling()
                 self.updater.bot.send_message(chat_id=self.chat_id, text="Bot started due to internet availability.")
-                
         else:
             if self.bot_running:
                 self.updater.stop()
@@ -427,8 +424,9 @@ class neonbot(plugins.Plugin):
                             data = json.load(open(geojson_file, 'r'))
                             lat = data['location']['lat']
                             lng = data['location']['lng']
-                            caption += f"\nLat: {lat}, Lng: {lng}"
-                        context.bot.send_photo(self.chat_id, f, caption)
+                            google_maps_link = f"https://www.google.com/maps?q={lat},{lng}"
+                            caption += f"\n[Location Long: {lng} Lat:{lat}]({google_maps_link})"
+                        context.bot.send_photo(self.chat_id, f, caption, parse_mode="Markdown")
                 else:
                     context.bot.send_message(chat_id=self.chat_id, text="Invalid file number.")
             except ValueError:
@@ -447,9 +445,10 @@ class neonbot(plugins.Plugin):
                     self.file_list.append(filename)
                 if idx % 30 == 0 or idx == len(os.listdir(self.qrcode_dir)):
                     file_list_text = "\n".join([f"{i}. {fn}" for i, fn in enumerate(self.file_list, start=idx_start)])
-                    context.bot.send_message(chat_id=self.chat_id, text=file_list_text)
+                    context.bot.send_message(chat_id=self.chat_id, text=file_list_text, parse_mode="Markdown")
                     self.file_list.clear()
                     idx_start = idx + 1
+
 
     def help_command(self, update, context):
         command_list = [
