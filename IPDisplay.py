@@ -76,3 +76,4 @@ class IPDisplay(plugins.Plugin):
                 ui.remove_element('ip3')
             if self.config.get('enable_wlan0', True):
                 ui.remove_element('ip4')
+        logging.info("IP Display Plugin unloaded.")
