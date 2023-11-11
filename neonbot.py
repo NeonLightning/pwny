@@ -34,7 +34,7 @@ class neonbot(plugins.Plugin):
         self.all_passwd = []
         self.file_list = []
 
-    def _startstopbot(self, update):
+    def _startstopbot(self):
         try:
             if self._is_internet_available():
                 if not self.bot_running:
@@ -422,23 +422,7 @@ class neonbot(plugins.Plugin):
         self.updater.dispatcher.add_handler(CommandHandler('help', self.help_command))
         self.updater.dispatcher.add_handler(MessageHandler(Filters.command, self.help_command))
         logging.info("[neonbot] Loaded.")
-        while True:
-            if self._is_internet_available():
-                if self.bot_running:
-                    pass
-                else:
-                    logging.info("[neonbot] Bot started.")
-                    self.bot_running = True
-                    self.updater.start_polling()
-                    self.updater.bot.send_message(chat_id=self.chat_id, text="Bot started due to internet availability.")
-            else:
-                if self.bot_running:
-                    self.updater.stop()
-                    self.updater.is_idle = False
-                    logging.info("[neonbot] Bot stopped due to no internet connectivity.")
-                    self.bot_running = False
-                logging.info("[neonbot] Internet is not available, update skipped.")
-            time.sleep(30)
+        self._startstopbot()
 
     def on_unload(self, agent):
         if self.updater is not None:
@@ -449,4 +433,4 @@ class neonbot(plugins.Plugin):
         self._startstopbot()
 
     def on_epoch(self, context):
-        self._startstopbot
+        self._startstopbot()
