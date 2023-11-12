@@ -225,16 +225,6 @@ class neonbot(plugins.Plugin):
                 context.bot.send_document(chat_id=self.chat_id, document=open('/root/output.txt', 'rb'))
                 os.remove('/home/pi/output.txt')
 
-    def _move_geojson_files(self):
-        geojson_files = glob.glob("/root/handshakes/*.geo.json")
-        for geojson_file in geojson_files:
-            try:
-                destination_path = os.path.join(self.locdata_path, os.path.basename(geojson_file))
-                shutil.move(geojson_file, destination_path)
-                print(f"Moved {os.path.basename(geojson_file)} to {destination_path}")
-            except Exception as e:
-                print(f"Error moving {os.path.basename(geojson_file)}: {str(e)}")
-
     def screencap_command(self, update, context):
         photo_path = '/var/tmp/pwnagotchi/pwnagotchi.png'
         with Image.open(photo_path) as img:
@@ -359,10 +349,10 @@ class neonbot(plugins.Plugin):
             subprocess.run(["sudo", "touch", "/root/.pwnagotchi-auto"])
             subprocess.run(["sudo", "shutdown", "-h", "now"])
 
-
     def qr_files(self, update, context):
         args = context.args
         idx_start = 1
+        data = None
         if args and args[0].strip():
             try:
                 selected_number = int(args[0])
@@ -372,18 +362,21 @@ class neonbot(plugins.Plugin):
                     bssid = selected_file.rsplit('-', 1)[-1].rsplit('.', 1)[0].lower().replace(':', '')
                     with open(f"{self.qrcode_dir}{selected_file}", 'rb') as f:
                         caption = f"^^^ {ssid_n_pass}"
-                        geojson_files = glob.glob(f"/root/handshakes/*_{bssid}.geo.json")
-                        geojson_files += glob.glob(f"{self.locdata_path}*_{bssid}.geo.json")
+                        geojson_files = glob.glob(f"/root/handshakes/*_{bssid}.gps.json")
+                        geojson_files += glob.glob(f"/root/handshakes/*_{bssid}.geo.json")
                         if geojson_files:
                             geojson_file = geojson_files[0]
-                            destination_path = os.path.join(self.locdata_path, os.path.basename(geojson_file))
-                            if geojson_file != destination_path:
-                                shutil.copy(geojson_file, destination_path)
                             data = json.load(open(geojson_file, 'r'))
-                            lat = data['location']['lat']
-                            lng = data['location']['lng']
-                            google_maps_link = f"https://www.google.com/maps?q={lat},{lng}"
-                            caption += f"\n[Location Long: {lng} Lat:{lat}]({google_maps_link})"
+                            if data is not None:
+                                if 'Latitude' in data and 'Longitude' in data:
+                                    lat = data['Latitude']
+                                    lng = data['Longitude']
+                                else:
+                                    lat = data.get('location', {}).get('lat')
+                                    lng = data.get('location', {}).get('lng')
+                                if lat is not None and lng is not None:
+                                    google_maps_link = f"https://www.google.com/maps?q={lat},{lng}"
+                                    caption += f"\n[Location Long: {lng} Lat:{lat}]({google_maps_link})"
                             context.bot.send_photo(self.chat_id, f, caption, parse_mode="Markdown")
                         else:
                             context.bot.send_photo(self.chat_id, f, caption)
@@ -393,22 +386,20 @@ class neonbot(plugins.Plugin):
                 context.bot.send_message(chat_id=self.chat_id, text="Please enter a valid number.")
         else:
             self.file_list.clear()
-            self._move_geojson_files()
             for idx, filename in enumerate(os.listdir(self.qrcode_dir), start=1):
                 if filename.lower().endswith('.png'):
                     file_name = filename.split('.')[0]
                     bssid = file_name.split('-')[-1]
-                    geojson_files = glob.glob(f"/root/handshakes/*_{bssid}.geo.json")
-                    geojson_files += glob.glob(f"{self.locdata_path}*_{bssid}.geo.json")
+                    geojson_files = glob.glob(f"/root/handshakes/*_{bssid}.gps.json")
+                    geojson_files += glob.glob(f"/root/handshakes/*_{bssid}.geo.json")
                     if geojson_files:
                         filename += " *geodata*"
                     self.file_list.append(filename)
-                if idx % 20 == 0 or idx == len(os.listdir(self.qrcode_dir)):
+                if idx % 30 == 0 or idx == len(os.listdir(self.qrcode_dir)):
                     file_list_text = "\n".join([f"{i}. {fn}" for i, fn in enumerate(self.file_list, start=idx_start)])
                     context.bot.send_message(chat_id=self.chat_id, text=file_list_text)
                     self.file_list.clear()
                     idx_start = idx + 1
-
 
     def help_command(self, update, context):
         command_list = [
