@@ -42,11 +42,14 @@ class neonbot(plugins.Plugin):
                     self.bot_running = True
                     self.updater.start_polling()
                     self.updater.bot.send_message(chat_id=self.chat_id, text="Bot started due to internet availability.")
+                else:
+                    logging.info("[neonbot] Bot is already running.")
             else:
                 if self.bot_running:
                     try:
                         self.updater.stop()
-                        self.updater.is_idle = False
+                        while self.updater.is_alive():
+                            time.sleep(0.1)  # Wait for the previous instance to stop
                     except telegram.error.Conflict as conflict_error:
                         logging.warning(f"[neonbot] Conflict error when stopping the bot: {conflict_error}")
                     logging.info("[neonbot] Bot stopped due to no internet connectivity.")
@@ -54,7 +57,17 @@ class neonbot(plugins.Plugin):
         except ConnectionResetError as e:
             logging.error(f"[neonbot] Connection reset error: {e}")
         except telegram.error.Conflict as conflict_error:
-            logging.error(f"[neonbot] Conflict error: {conflict_error}")
+            logging.warning(f"[neonbot] Conflict error: {conflict_error}")
+            # Handle the conflict error by stopping the previous instance
+            if self.bot_running:
+                try:
+                    self.updater.stop()
+                    while self.updater.is_alive():
+                        time.sleep(0.1)  # Wait for the previous instance to stop
+                except Exception as stop_error:
+                    logging.error(f"[neonbot] Error stopping the previous instance: {stop_error}")
+            logging.info("[neonbot] Bot stopped due to conflict error.")
+            self.bot_running = False
         except Exception as e:
             logging.error(f"[neonbot] An error occurred: {e}")
 
@@ -317,22 +330,35 @@ class neonbot(plugins.Plugin):
             context.bot.send_message(chat_id=self.chat_id, text="Usage: /command <command> [arguments]")
 
     def restart_command(self, update, context):
+        args = context.args
         logging.info("[neonbot] restarting pwny")
         context.bot.send_message(chat_id=self.chat_id, text="[neonbot] restarting pwny")
-        subprocess.run(["sudo", "touch", "/root/.pwnagotchi-auto"])
-        subprocess.run(["sudo", "systemctl", "restart", "pwnagotchi"])
+        if args and "M" in args:
+            subprocess.run(["sudo", "systemctl", "restart", "pwnagotchi"])
+        else:
+            subprocess.run(["sudo", "touch", "/root/.pwnagotchi-auto"])
+            subprocess.run(["sudo", "systemctl", "restart", "pwnagotchi"])
 
     def reboot_command(self, update, context):
+        args = context.args
         logging.info("[neonbot] rebooting")
         context.bot.send_message(chat_id=self.chat_id, text="[neonbot] rebooting")
-        subprocess.run(["sudo", "touch", "/root/.pwnagotchi-auto"])
-        subprocess.run(["sudo", "shutdown", "-r", "now"])
+        if args and "M" in args:
+            subprocess.run(["sudo", "reboot"])
+        else:
+            subprocess.run(["sudo", "touch", "/root/.pwnagotchi-auto"])
+            subprocess.run(["sudo", "shutdown", "-r", "now"])
 
     def shutdown_command(self, update, context):
+        args = context.args
         logging.info("[neonbot] shutting down")
         context.bot.send_message(chat_id=self.chat_id, text="[neonbot] shutting down")
-        subprocess.run(["sudo", "touch", "/root/.pwnagotchi-auto"])
-        subprocess.run(["sudo", "shutdown", "-h", "now"])
+        if args and "M" in args:
+            subprocess.run(["sudo", "shutdown", "-h", "now"])
+        else:
+            subprocess.run(["sudo", "touch", "/root/.pwnagotchi-auto"])
+            subprocess.run(["sudo", "shutdown", "-h", "now"])
+
 
     def qr_files(self, update, context):
         args = context.args
@@ -430,7 +456,4 @@ class neonbot(plugins.Plugin):
             self.updater.stop()
 
     def on_internet_available(self, agent):
-        self._startstopbot()
-
-    def on_epoch(self, context):
         self._startstopbot()
