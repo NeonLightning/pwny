@@ -23,7 +23,6 @@ class neonbot(plugins.Plugin):
     def __init__(self):
         self.qrlist_path = "/root/.qrlist"
         self.qrcode_dir = '/root/qrcodes/'
-        #self.locdata_path = '/root/locdata/'
         self.locdata_path = '/root/handshakes/'
         self.bot_token = None
         self.chat_id = None
@@ -42,14 +41,12 @@ class neonbot(plugins.Plugin):
                     self.bot_running = True
                     self.updater.start_polling()
                     self.updater.bot.send_message(chat_id=self.chat_id, text="Bot started due to internet availability.")
-                else:
-                    logging.info("[neonbot] Bot is already running.")
             else:
                 if self.bot_running:
                     try:
                         self.updater.stop()
                         while self.updater.is_alive():
-                            time.sleep(0.1)  # Wait for the previous instance to stop
+                            time.sleep(0.1)
                     except telegram.error.Conflict as conflict_error:
                         logging.warning(f"[neonbot] Conflict error when stopping the bot: {conflict_error}")
                     logging.info("[neonbot] Bot stopped due to no internet connectivity.")
@@ -58,12 +55,11 @@ class neonbot(plugins.Plugin):
             logging.error(f"[neonbot] Connection reset error: {e}")
         except telegram.error.Conflict as conflict_error:
             logging.warning(f"[neonbot] Conflict error: {conflict_error}")
-            # Handle the conflict error by stopping the previous instance
             if self.bot_running:
                 try:
                     self.updater.stop()
                     while self.updater.is_alive():
-                        time.sleep(0.1)  # Wait for the previous instance to stop
+                        time.sleep(0.1)
                 except Exception as stop_error:
                     logging.error(f"[neonbot] Error stopping the previous instance: {stop_error}")
             logging.info("[neonbot] Bot stopped due to conflict error.")
@@ -377,7 +373,7 @@ class neonbot(plugins.Plugin):
                                 if lat is not None and lng is not None:
                                     google_maps_link = f"https://www.google.com/maps?q={lat},{lng}"
                                     caption += f"\n[Location Long: {lng} Lat:{lat}]({google_maps_link})"
-                            context.bot.send_photo(self.chat_id, f, caption, parse_mode="Markdown")
+                                    context.bot.send_photo(self.chat_id, f, caption, parse_mode="Markdown")
                         else:
                             context.bot.send_photo(self.chat_id, f, caption)
                 else:
