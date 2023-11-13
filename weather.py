@@ -4,6 +4,7 @@
 # https://home.openweathermap.org/api_keys
 # main.plugins.weather.areacode = "postal/zip"
 # main.plugins.weather.countrycode = "countrycode"
+# main.plugins.weather.gps_device = "/dev/ttyACM0"
 
 import os, logging, re, subprocess, pwnagotchi, toml, json, requests, urllib.request
 import datetime
@@ -27,7 +28,7 @@ class WeatherForecast(plugins.Plugin):
             return True
         except urllib.request.URLError:
             return False
-
+        
     def on_loaded(self):
         self.api_key = None
         self.areacode = None
@@ -38,12 +39,20 @@ class WeatherForecast(plugins.Plugin):
         self.api_key = config['main']['plugins']['weather']['api_key']
         self.areacode = config['main']['plugins']['weather']['areacode']
         self.country = config['main']['plugins']['weather']['countrycode']
+        self.gps = config['main']['plugins']['weather']['gps']
+        logging.info(f"Weather Forecast Loading {self.gps}")
         self.last_update_time = datetime.datetime.now()
         self.geo_url = f"http://api.openweathermap.org/geo/1.0/zip?zip={self.areacode},{self.country}&appid={self.api_key}"
-        self.update_lat_lon()
+        self._update_lat_lon()
+        if os.path.exists(self.gps):
+            logging.info(f"WF device {self.gps}")
+        self._update_gps()
         logging.info(f"Weather Forecast Loaded")
 
-    def update_lat_lon(self):
+    def _update_gps(self):
+        pass
+
+    def _update_lat_lon(self):
         try:
             geo_response = requests.get(self.geo_url).json()
             self.lat = geo_response['lat']
