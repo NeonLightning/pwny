@@ -4,7 +4,8 @@
 # https://home.openweathermap.org/api_keys
 # main.plugins.weather.areacode = "postal/zip"
 # main.plugins.weather.countrycode = "countrycode"
-# main.plugins.weather.gps_device = "/dev/ttyACM0"
+# main.plugins.weather.gps = "/dev/ttyACM0"
+#(even if you don't have a gps set this...)
 
 import os, logging, re, subprocess, pwnagotchi, toml, json, requests, urllib.request
 import datetime
@@ -14,6 +15,9 @@ import pwnagotchi.ui.components as components
 import pwnagotchi.ui.view as view
 import pwnagotchi.ui.fonts as fonts
 import pwnagotchi.plugins as plugins
+from pwnagotchi.bettercap import Client
+
+agent = Client('localhost', port=8081, username="pwnagotchi", password="pwnagotchi");    
 
 class WeatherForecast(plugins.Plugin):
     __author__ = 'NeonLightning'
@@ -35,30 +39,33 @@ class WeatherForecast(plugins.Plugin):
         self.country = None
         self.lat = None
         self.lon = None
+        self.cords = None
         self.timer = 12
         self.api_key = config['main']['plugins']['weather']['api_key']
         self.areacode = config['main']['plugins']['weather']['areacode']
         self.country = config['main']['plugins']['weather']['countrycode']
         self.gps = config['main']['plugins']['weather']['gps']
-        logging.info(f"Weather Forecast Loading {self.gps}")
-        self.last_update_time = datetime.datetime.now()
         self.geo_url = f"http://api.openweathermap.org/geo/1.0/zip?zip={self.areacode},{self.country}&appid={self.api_key}"
         self._update_lat_lon()
-        if os.path.exists(self.gps):
-            logging.info(f"WF device {self.gps}")
-        self._update_gps()
         logging.info(f"Weather Forecast Loaded")
 
-    def _update_gps(self):
-        pass
-
     def _update_lat_lon(self):
-        try:
-            geo_response = requests.get(self.geo_url).json()
-            self.lat = geo_response['lat']
-            self.lon = geo_response['lon']
-        except:
-            logging.error("Error fetching latitude and longitude")
+        if os.path.exists(self.gps):
+            try:
+                info = agent.session()
+                coords = info.get("gps", {})
+                if all([coords.get("Latitude"), coords.get("Longitude")]):
+                    self.lat = coords["Latitude"]
+                    self.lon = coords["Longitude"]
+            except Exception as err:
+                logging.warn(f"Failed to get GPS coordinates: {err}")
+        else:
+            try:
+                geo_response = requests.get(self.geo_url).json()
+                self.lat = geo_response.get('lat')
+                self.lon = geo_response.get('lon')
+            except Exception as err:
+                logging.error(f"Error fetching latitude and longitude: {err}")
         self.weather_url = f"https://api.openweathermap.org/data/2.5/weather?lat={self.lat}&lon={self.lon}&appid={self.api_key}"
         if self._is_internet_available():
             self.weather_response = requests.get(self.weather_url).json()
@@ -69,7 +76,7 @@ class WeatherForecast(plugins.Plugin):
         ui.add_element('main', components.LabeledValue(color=view.BLACK, label='', value='',
                                                             position=(90, 100), label_font=fonts.Small, text_font=fonts.Small))
     
-    def on_epoch(self, agent):
+    def on_epoch(self, agent, epoch, epoch_data):
         if self._is_internet_available():
             if self.timer == 12:
                 self.weather_response = requests.get(self.weather_url).json()
@@ -87,7 +94,6 @@ class WeatherForecast(plugins.Plugin):
         except:
             ui.set('main', f"WTHR:NA")
             ui.set('feels', "Temp:NA")
-
 
     def on_unload(self, ui):
         with ui._lock:
