@@ -23,7 +23,6 @@ class IPDisplay(plugins.Plugin):
                                             position=pos1, label_font=fonts.Small, text_font=fonts.Small))
 
     def on_ui_update(self, ui):
-        self.rotate += 1
         eth0_ip = subprocess.getoutput("ip -4 addr show eth0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -1")
         usb0_ip = subprocess.getoutput("ip -4 addr show usb0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -1")
         bnep0_ip = subprocess.getoutput("ip -4 addr show bnep0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -1")
@@ -36,18 +35,21 @@ class IPDisplay(plugins.Plugin):
             if eth0_ip != 'Disconnected':
                 ui.set('ip1', f'Eth0:{eth0_ip}')
                 time.sleep(0.5)
+                self.rotate += 1
             else:
                 self.rotate += 1
         if self.rotate == 2:
             if usb0_ip != 'Disconnected':
                 ui.set('ip1', f'USB0:{usb0_ip}')
                 time.sleep(0.5)
+                self.rotate += 1
             else:
                 self.rotate += 1
         if self.rotate == 3:
             if bnep0_ip != 'Disconnected':
                 ui.set('ip1', f'BT0 :{bnep0_ip}')
                 time.sleep(0.5)
+                self.rotate += 1
             else:
                 self.rotate += 1
         if self.rotate == 4:
