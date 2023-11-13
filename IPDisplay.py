@@ -18,7 +18,7 @@ class IPDisplay(plugins.Plugin):
 
     def on_ui_setup(self, ui):
         self.rotate = 0
-        pos1 = (150, 11)
+        pos1 = (150, 13)
         ui.add_element('ip1', LabeledValue(color=BLACK, label="", value='Disconnected',
                                             position=pos1, label_font=fonts.Small, text_font=fonts.Small))
 
