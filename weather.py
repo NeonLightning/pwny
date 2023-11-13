@@ -1,20 +1,10 @@
-import os
-import logging
-import re
-import subprocess
+import os, logging, re, subprocess, pwnagotchi, toml, json, requests
 from io import TextIOWrapper
-from pwnagotchi import plugins
-from pwnagotchi import config
-import requests
+from pwnagotchi import plugins, config
 import pwnagotchi.ui.components as components
 import pwnagotchi.ui.view as view
 import pwnagotchi.ui.fonts as fonts
 import pwnagotchi.plugins as plugins
-import pwnagotchi
-import datetime
-import toml
-import yaml
-import json
 
 class WeatherForecast(plugins.Plugin):
     __author__ = 'NeonLightning'
