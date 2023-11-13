@@ -2,10 +2,11 @@
 # main.plugins.weather.enabled = true
 # main.plugins.weather.api_key = ""
 # https://home.openweathermap.org/api_keys
-# main.plugins.weather.location = ""
-# i just guessed location format....
+# main.plugins.weather.areacode = "postal/zip"
+# main.plugins.weather.countrycode = "countrycode"
 
 import os, logging, re, subprocess, pwnagotchi, toml, json, requests, urllib.request
+import datetime
 from io import TextIOWrapper
 from pwnagotchi import plugins, config
 import pwnagotchi.ui.components as components
@@ -28,15 +29,34 @@ class WeatherForecast(plugins.Plugin):
             return False
 
     def on_loaded(self):
-        self.timer = 12
         self.api_key = None
-        self.location = None
-        self.weather_response = None
+        self.areacode = None
+        self.country = None
+        self.lat = None
+        self.lon = None
+        self.timer = 12
         self.api_key = config['main']['plugins']['weather']['api_key']
         logging.info(f"Weather Forecast Plugin api.{self.api_key}")
-        self.location = config['main']['plugins']['weather']['location']
-        logging.info(f"Weather Forecast Plugin location.{self.location}")
-        self.weather_url = f"https://api.openweathermap.org/data/2.5/weather?q={self.location}&units=metric&appid={self.api_key}"
+        self.areacode = config['main']['plugins']['weather']['areacode']
+        logging.info(f"Weather Forecast Plugin api.{self.areacode}")
+        self.country = config['main']['plugins']['weather']['countrycode']
+        logging.info(f"Weather Forecast Plugin api.{self.country}")
+        self.last_update_time = datetime.datetime.now()
+        logging.info(f"Weather Forecast Plugin updatetime.{self.last_update_time}")
+        self.geo_url = f"http://api.openweathermap.org/geo/1.0/zip?zip={self.areacode},{self.country}&appid={self.api_key}"
+        logging.info(f"Weather Forecast Plugin geo_url.{self.geo_url}")
+        self.update_lat_lon()
+        logging.info(f"lon{self.lat}lat{self.lon}")
+
+    def update_lat_lon(self):
+        try:
+            geo_response = requests.get(self.geo_url).json()
+            self.lat = geo_response['lat']
+            self.lon = geo_response['lon']
+        except:
+            logging.error("Error fetching latitude and longitude")
+        self.weather_url = f"https://api.openweathermap.org/data/2.5/weather?lat={self.lat}&lon={self.lon}&appid={self.api_key}"
+        logging.info(f"Weather Forecast Plugin weatherurl. {self.weather_url}")
         if self._is_internet_available():
             self.weather_response = requests.get(self.weather_url).json()
 
@@ -57,13 +77,15 @@ class WeatherForecast(plugins.Plugin):
                     
     def on_ui_update(self, ui):
         try:
-            current_temp = self.weather_response['main']['feels_like']
-            description = self.weather_response['weather'][0]['description']
-            ui.set('feels', f"TEMP:{current_temp}°C")
+            tempk = self.weather_response['main']['feels_like']
+            tempc = round(tempk - 273.15, 1)
+            description = self.weather_response['weather'][0]['main']
+            ui.set('feels', f"TEMP:{tempc}°C")
             ui.set('main', f"WTHR:{description}")
         except:
             ui.set('main', f"WTHR:NA")
             ui.set('feels', "Temp:NA")
+
 
     def on_unload(self, ui):
         with ui._lock:
