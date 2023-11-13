@@ -37,6 +37,7 @@ class WeatherForecast(plugins.Plugin):
         
     def on_internet_available(self, ui):
         if self.timer == 12:
+            logging.info(f"Weather Forecast Plugin update")
             weather_url = f"https://api.openweathermap.org/data/2.5/weather?q={self.location}&units=metric&appid={self.api_key}"
             try:
                 weather_response = requests.get(weather_url).json()
