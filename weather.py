@@ -1,7 +1,9 @@
 ###
 # main.plugins.weather.enabled = true
 # main.plugins.weather.api_key = ""
+# https://home.openweathermap.org/api_keys
 # main.plugins.weather.location = ""
+# i just guessed location format....
 
 import os, logging, re, subprocess, pwnagotchi, toml, json, requests
 from io import TextIOWrapper
