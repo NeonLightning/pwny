@@ -1,5 +1,7 @@
 # Setup
 ###########################################################################
+# right now depends on the output of wpa-sec or onlinehashcrack until i can
+# find a better solution.
 # add these three lines to config and fill in bot_token and chat_id
 # main.plugins.neonbot.enabled = false
 # main.plugins.neonbot.bot_token = ""
