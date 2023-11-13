@@ -36,17 +36,12 @@ class WeatherForecast(plugins.Plugin):
         self.lon = None
         self.timer = 12
         self.api_key = config['main']['plugins']['weather']['api_key']
-        logging.info(f"Weather Forecast Plugin api.{self.api_key}")
         self.areacode = config['main']['plugins']['weather']['areacode']
-        logging.info(f"Weather Forecast Plugin api.{self.areacode}")
         self.country = config['main']['plugins']['weather']['countrycode']
-        logging.info(f"Weather Forecast Plugin api.{self.country}")
         self.last_update_time = datetime.datetime.now()
-        logging.info(f"Weather Forecast Plugin updatetime.{self.last_update_time}")
         self.geo_url = f"http://api.openweathermap.org/geo/1.0/zip?zip={self.areacode},{self.country}&appid={self.api_key}"
-        logging.info(f"Weather Forecast Plugin geo_url.{self.geo_url}")
         self.update_lat_lon()
-        logging.info(f"lon{self.lat}lat{self.lon}")
+        logging.info(f"Weather Forecast Loaded")
 
     def update_lat_lon(self):
         try:
@@ -56,7 +51,6 @@ class WeatherForecast(plugins.Plugin):
         except:
             logging.error("Error fetching latitude and longitude")
         self.weather_url = f"https://api.openweathermap.org/data/2.5/weather?lat={self.lat}&lon={self.lon}&appid={self.api_key}"
-        logging.info(f"Weather Forecast Plugin weatherurl. {self.weather_url}")
         if self._is_internet_available():
             self.weather_response = requests.get(self.weather_url).json()
 
@@ -66,14 +60,13 @@ class WeatherForecast(plugins.Plugin):
         ui.add_element('main', components.LabeledValue(color=view.BLACK, label='', value='',
                                                             position=(90, 100), label_font=fonts.Small, text_font=fonts.Small))
     
-    def on_internet_available(self):
-        if self.timer == 12:
-            self.weather_response = requests.get(self.weather_url).json()
-            self.timer = 0
-            logging.info(f"WF self.timer {self.timer}")
-        else:
-            self.timer += 1
-            logging.info(f"WF self.timer {self.timer}")
+    def on_epoch(self, agent):
+        if self._is_internet_available():
+            if self.timer == 12:
+                self.weather_response = requests.get(self.weather_url).json()
+                self.timer = 0
+            else:
+                self.timer += 1
                     
     def on_ui_update(self, ui):
         try:
