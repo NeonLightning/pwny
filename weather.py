@@ -7,9 +7,7 @@
 # main.plugins.weather.gps = "/dev/ttyACM0"
 #(even if you don't have a gps set this...)
 
-import os, logging, re, subprocess, pwnagotchi, toml, json, requests, urllib.request
-import datetime
-from io import TextIOWrapper
+import os, logging, re, pwnagotchi, toml, json, requests, urllib.request
 from pwnagotchi import plugins, config
 import pwnagotchi.ui.components as components
 import pwnagotchi.ui.view as view
@@ -50,7 +48,7 @@ class WeatherForecast(plugins.Plugin):
         logging.info(f"Weather Forecast Loaded")
 
     def _update_lat_lon(self):
-        if os.path.exists(self.gps):
+        if config['main']['plugins']['gps']['enabled'] or config['main']['plugins']['gps_more']['enabled']:
             try:
                 info = agent.session()
                 coords = info.get("gps", {})
