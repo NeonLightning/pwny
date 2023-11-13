@@ -1,3 +1,8 @@
+###
+# main.plugins.weather.enabled = true
+# main.plugins.weather.api_key = ""
+# main.plugins.weather.location = ""
+
 import os, logging, re, subprocess, pwnagotchi, toml, json, requests
 from io import TextIOWrapper
 from pwnagotchi import plugins, config
@@ -14,9 +19,12 @@ class WeatherForecast(plugins.Plugin):
     __name__ = 'WeatherForecast'
 
     def on_loaded(self):
+        self.api_key = None
+        self.location = None
         self.api_key = config['main']['plugins']['weather']['api_key']
+        logging.info(f"Weather Forecast Plugin api.{self.api_key}")
         self.location = config['main']['plugins']['weather']['location']
-        logging.info("Weather Forecast Plugin loaded.")
+        logging.info(f"Weather Forecast Plugin location.{self.location}")
 
     def on_ui_setup(self, ui):
         ui.add_element('feels', components.LabeledValue(color=view.BLACK, label='', value='',
@@ -32,6 +40,7 @@ class WeatherForecast(plugins.Plugin):
             ui.set('feels', f"TEMP:{current_temp}°C")
             ui.set('main', f"WTHR:{description}")
         except:
+            ui.set('main', f"WTHR:NA")
             ui.set('feels', "Temp:NA")
 
     def on_unload(self, ui):
