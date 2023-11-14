@@ -15,6 +15,9 @@ class IPDisplay(plugins.Plugin):
 
     def on_loaded(self):
         logging.info("IP Display Plugin loaded.")
+    
+    def on_ready(self, agent):
+        self.ready = True
 
     def on_ui_setup(self, ui):
         self.rotate = 0
@@ -23,40 +26,42 @@ class IPDisplay(plugins.Plugin):
                                             position=pos1, label_font=fonts.Small, text_font=fonts.Small))
 
     def on_ui_update(self, ui):
-        self.rotate += 1
-        if self.rotate == 1:
-            eth0_ip = subprocess.getoutput("ip -4 addr show eth0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -1")
-            eth0_ip = eth0_ip if "Device \"eth0\" does not exist." not in eth0_ip and eth0_ip.strip() != '' else 'Disconnected'
-            if eth0_ip != 'Disconnected':
-                ui.set('ip1', f'Eth0:{eth0_ip}')
-                time.sleep(0.5)
-            else:
-                self.rotate += 1
-        if self.rotate == 2:
-            usb0_ip = subprocess.getoutput("ip -4 addr show usb0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -1")
-            usb0_ip = usb0_ip if "Device \"usb0\" does not exist." not in usb0_ip and usb0_ip.strip() != '' else 'Disconnected'
-            if usb0_ip != 'Disconnected':
-                ui.set('ip1', f'USB0:{usb0_ip}')
-                time.sleep(0.5)
-            else:
-                self.rotate += 1
-        if self.rotate == 3:
-            bnep0_ip = subprocess.getoutput("ip -4 addr show bnep0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -1")
-            bnep0_ip = bnep0_ip if "Device \"bnep0\" does not exist." not in bnep0_ip and bnep0_ip.strip() != '' else 'Disconnected'
-            if bnep0_ip != 'Disconnected':
-                ui.set('ip1', f'BT0 :{bnep0_ip}')
-                time.sleep(0.5)
-            else:
-                self.rotate += 1
-        if self.rotate == 4:
-            wlan0_ip = subprocess.getoutput("ip -4 addr show wlan0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -1")
-            wlan0_ip = wlan0_ip if "Device \"wlan0\" does not exist." not in wlan0_ip and wlan0_ip.strip() != '' else 'Disconnected'
-            if wlan0_ip != 'Disconnected':
-                ui.set('ip1', f'WLAN:{wlan0_ip}')
-                time.sleep(0.5)
-            self.rotate = 1
+        if self.ready:
+            self.rotate += 1
+            if self.rotate == 1:
+                eth0_ip = subprocess.getoutput("ip -4 addr show eth0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -1")
+                eth0_ip = eth0_ip if "Device \"eth0\" does not exist." not in eth0_ip and eth0_ip.strip() != '' else 'Disconnected'
+                if eth0_ip != 'Disconnected':
+                    ui.set('ip1', f'Eth0:{eth0_ip}')
+                    time.sleep(0.5)
+                else:
+                    self.rotate += 1
+            if self.rotate == 2:
+                usb0_ip = subprocess.getoutput("ip -4 addr show usb0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -1")
+                usb0_ip = usb0_ip if "Device \"usb0\" does not exist." not in usb0_ip and usb0_ip.strip() != '' else 'Disconnected'
+                if usb0_ip != 'Disconnected':
+                    ui.set('ip1', f'USB0:{usb0_ip}')
+                    time.sleep(0.5)
+                else:
+                    self.rotate += 1
+            if self.rotate == 3:
+                bnep0_ip = subprocess.getoutput("ip -4 addr show bnep0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -1")
+                bnep0_ip = bnep0_ip if "Device \"bnep0\" does not exist." not in bnep0_ip and bnep0_ip.strip() != '' else 'Disconnected'
+                if bnep0_ip != 'Disconnected':
+                    ui.set('ip1', f'BT0 :{bnep0_ip}')
+                    time.sleep(0.5)
+                else:
+                    self.rotate += 1
+            if self.rotate == 4:
+                wlan0_ip = subprocess.getoutput("ip -4 addr show wlan0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -1")
+                wlan0_ip = wlan0_ip if "Device \"wlan0\" does not exist." not in wlan0_ip and wlan0_ip.strip() != '' else 'Disconnected'
+                if wlan0_ip != 'Disconnected':
+                    ui.set('ip1', f'WLAN:{wlan0_ip}')
+                    time.sleep(0.5)
+                self.rotate = 0
 
     def on_unload(self, ui):
+        self.ready = False
         with ui._lock:
             ui.remove_element('ip1')
         logging.info("IP Display Plugin unloaded.")

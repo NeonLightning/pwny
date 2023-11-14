@@ -5,15 +5,19 @@
 # main.plugins.weather.areacode = "postal/zip"
 # main.plugins.weather.countrycode = "countrycode"
 # main.plugins.weather.gps = "/dev/ttyACM0"
-#(even if you don't have a gps set this...)
+# (even if you don't have a gps set this...)
+# but if you want gps for weather you'll need gps.py or gps_more.py
+# REQUIRES CUSTOM-FACES-MOD
 
-import os, logging, re, pwnagotchi, toml, json, requests, urllib.request
+import os, logging, re, pwnagotchi, toml, json, requests, urllib.request, shutil
 from pwnagotchi import plugins, config
 import pwnagotchi.ui.components as components
 import pwnagotchi.ui.view as view
 import pwnagotchi.ui.fonts as fonts
 import pwnagotchi.plugins as plugins
+from pwnagotchi.ui.components import Text
 from pwnagotchi.bettercap import Client
+from PIL import ImageDraw
 
 agent = Client('localhost', port=8081, username="pwnagotchi", password="pwnagotchi");    
 
@@ -32,6 +36,7 @@ class WeatherForecast(plugins.Plugin):
             return False
         
     def on_loaded(self):
+        self.previous_seticon = None
         self.api_key = None
         self.areacode = None
         self.country = None
@@ -39,6 +44,10 @@ class WeatherForecast(plugins.Plugin):
         self.lon = None
         self.cords = None
         self.timer = 12
+        self.icon_path = "/home/pi/custom_plugins/test.png"
+        self.icon_position_x = 145
+        self.icon_position_y = 41
+        self.icon = Text(value=self.icon_path, png=True, position=(self.icon_position_x, self.icon_position_y))
         self.api_key = config['main']['plugins']['weather']['api_key']
         self.areacode = config['main']['plugins']['weather']['areacode']
         self.country = config['main']['plugins']['weather']['countrycode']
@@ -73,6 +82,7 @@ class WeatherForecast(plugins.Plugin):
                                                                    position=(90, 85), label_font=fonts.Small, text_font=fonts.Small))
         ui.add_element('main', components.LabeledValue(color=view.BLACK, label='', value='',
                                                             position=(90, 100), label_font=fonts.Small, text_font=fonts.Small))
+        ui.add_element('icon', self.icon)
     
     def on_epoch(self, agent, epoch, epoch_data):
         if self._is_internet_available():
@@ -81,17 +91,26 @@ class WeatherForecast(plugins.Plugin):
                 self.timer = 0
             else:
                 self.timer += 1
-                    
+
     def on_ui_update(self, ui):
         try:
             tempk = self.weather_response['main']['feels_like']
             tempc = round(tempk - 273.15, 1)
             description = self.weather_response['weather'][0]['main']
+            seticon = self.weather_response['weather'][0]['icon']
+            source_path = f'/home/pi/custom_plugins/weather/{seticon}.png'
+            if seticon != self.previous_seticon:
+                logging.info(f"Copying icon from {source_path}")
+                if os.path.exists(source_path):
+                    shutil.copy(source_path, '/home/pi/custom_plugins/test.png')
+                else:
+                    ui.set('main', 'WTHR: Icon Not Found')
+                self.previous_seticon = seticon
             ui.set('feels', f"TEMP:{tempc}°C")
             ui.set('main', f"WTHR:{description}")
-        except:
-            ui.set('main', f"WTHR:NA")
-            ui.set('feels', "Temp:NA")
+        except Exception as e:
+            ui.set('main', 'WTHR: Error')
+            ui.set('feels', 'Temp: Error')
 
     def on_unload(self, ui):
         with ui._lock:
