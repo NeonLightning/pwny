@@ -23,7 +23,7 @@ agent = Client('localhost', port=8081, username="pwnagotchi", password="pwnagotc
 
 class WeatherForecast(plugins.Plugin):
     __author__ = 'NeonLightning'
-    __version__ = '0.3.0'
+    __version__ = '1.1.0'
     __license__ = 'GPL3'
     __description__ = 'A plugin that displays the weather forecast on the pwnagotchi screen.'
     __name__ = 'WeatherForecast'
@@ -44,9 +44,10 @@ class WeatherForecast(plugins.Plugin):
         self.lon = None
         self.cords = None
         self.timer = 12
-        self.icon_path = "/home/pi/custom_plugins/test.png"
-        self.icon_position_x = 145
-        self.icon_position_y = 41
+        self.plugin_dir = os.path.dirname(os.path.realpath(__file__))
+        self.icon_path = os.path.join(self.plugin_dir, "weather", "display.png")
+        self.icon_position_x = 147
+        self.icon_position_y = 35
         self.icon = Text(value=self.icon_path, png=True, position=(self.icon_position_x, self.icon_position_y))
         self.api_key = config['main']['plugins']['weather']['api_key']
         self.areacode = config['main']['plugins']['weather']['areacode']
@@ -98,11 +99,11 @@ class WeatherForecast(plugins.Plugin):
             tempc = round(tempk - 273.15, 1)
             description = self.weather_response['weather'][0]['main']
             seticon = self.weather_response['weather'][0]['icon']
-            source_path = f'/home/pi/custom_plugins/weather/{seticon}.png'
+            source_path = os.path.join(self.plugin_dir, "weather", f"{seticon}.png")
             if seticon != self.previous_seticon:
                 logging.info(f"Copying icon from {source_path}")
                 if os.path.exists(source_path):
-                    shutil.copy(source_path, '/home/pi/custom_plugins/test.png')
+                    shutil.copy(source_path, os.path.join(self.plugin_dir, "weather", "display.png"))
                 else:
                     ui.set('main', 'WTHR: Icon Not Found')
                 self.previous_seticon = seticon
