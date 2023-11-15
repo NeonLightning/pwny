@@ -7,7 +7,7 @@
 # main.plugins.weather.gps = "/dev/ttyACM0"
 # (even if you don't have a gps set this...)
 # but if you want gps for weather you'll need gps.py or gps_more.py
-# REQUIRES CUSTOM-FACES-MOD
+# REQUIRES CUSTOM-FACES-MOD for icon display
 
 import os, logging, re, pwnagotchi, toml, json, requests, urllib.request, shutil
 from pwnagotchi import plugins, config
@@ -46,7 +46,7 @@ class WeatherForecast(plugins.Plugin):
         self.weather_response = None
         self.timer = 12
         self.plugin_dir = os.path.dirname(os.path.realpath(__file__))
-        self.icon_path = os.path.join(self.plugin_dir, "weather", "none.png")
+        self.icon_path = os.path.join(self.plugin_dir, "weather", "display.png")
         self.icon = Text(value=self.icon_path, png=True, position=(147, 35))
         self.api_key = config['main']['plugins']['weather']['api_key']
         self.areacode = config['main']['plugins']['weather']['areacode']
@@ -78,11 +78,11 @@ class WeatherForecast(plugins.Plugin):
             self.weather_response = requests.get(self.weather_url).json()
 
     def on_ui_setup(self, ui):
+        ui.add_element('icon', self.icon)
         ui.add_element('feels', components.LabeledValue(color=view.BLACK, label='', value='',
                                                                    position=(90, 85), label_font=fonts.Small, text_font=fonts.Small))
         ui.add_element('main', components.LabeledValue(color=view.BLACK, label='', value='',
                                                             position=(90, 100), label_font=fonts.Small, text_font=fonts.Small))
-        ui.add_element('icon', self.icon)
     
     def on_epoch(self, agent, epoch, epoch_data):
         if self._is_internet_available():
@@ -102,11 +102,12 @@ class WeatherForecast(plugins.Plugin):
             source_path = os.path.join(self.plugin_dir, "weather", f"{seticon}.png")
             if config['ui']['faces']['png']:
                 if seticon != self.previous_seticon:
-                    logging.info(f"Copying icon from {source_path}")
                     if os.path.exists(source_path):
+                        logging.info(f"Copying icon from {source_path}")
                         shutil.copy(source_path, os.path.join(self.plugin_dir, "weather", "display.png"))
                     else:
                         ui.set('main', 'WTHR: Icon Not Found')
+                        logging.info(f"Weather ERROR: ICON NOT FOUND {source_path}")
                     self.previous_seticon = seticon
             ui.set('feels', f"TEMP:{tempc}°C")
             ui.set('main', f"WTHR:{description}")
@@ -117,9 +118,19 @@ class WeatherForecast(plugins.Plugin):
 
     def on_unload(self, ui):
         with ui._lock:
-            ui.remove_element('feels')
-            ui.remove_element('main')
-            ui.remove_element('icon')
-            self.icon_path = os.path.join(self.plugin_dir, "weather", "none.png")
-            shutil.copy(self.icon_path, os.path.join(self.plugin_dir, "weather", "display.png"))
+            try:
+                ui.remove_element('feels')
+            except KeyError:
+                pass
+            try:
+                ui.remove_element('main')
+            except KeyError:
+                pass
+            if config['ui']['faces']['png']:
+                try:
+                    ui.remove_element('icon')
+                    self.icon_path = os.path.join(self.plugin_dir, "weather", "circle.png")
+                    shutil.copy(self.icon_path, os.path.join(self.plugin_dir, "weather", "display.png"))
+                except KeyError:
+                    pass
             logging.info("Weather Plugin unloaded")
