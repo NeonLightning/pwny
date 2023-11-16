@@ -6,9 +6,11 @@ import shutil
 
 url = 'https://github.com/ZerBea/hcxtools/archive/refs/tags/6.2.5.zip'
 download_path = '/tmp/hcxtools-6.2.5.zip'
-extracted_folder = '/tmp/'
+extracted_folder = '/tmp/hcxtools_extraction/'
 os.makedirs(extracted_folder, exist_ok=True)
+
 try:
+    subprocess.run(['sudo', 'apt', '-y', 'install', 'libcurl4-openssl-dev'], check=True)
     response = requests.get(url)
     response.raise_for_status()
     with open(download_path, 'wb') as f:

@@ -78,11 +78,15 @@ class WeatherForecast(plugins.Plugin):
             self.weather_response = requests.get(self.weather_url).json()
 
     def on_ui_setup(self, ui):
-        ui.add_element('icon', self.icon)
+        logging.info("Weather setup")
+        ui.add_element('icon', self.icon)        
+        logging.info("Weather setup icon")
         ui.add_element('feels', components.LabeledValue(color=view.BLACK, label='', value='',
                                                                    position=(90, 85), label_font=fonts.Small, text_font=fonts.Small))
+        logging.info("Weather setup feelslike")
         ui.add_element('main', components.LabeledValue(color=view.BLACK, label='', value='',
                                                             position=(90, 100), label_font=fonts.Small, text_font=fonts.Small))
+        logging.info("Weather setup main")
     
     def on_epoch(self, agent, epoch, epoch_data):
         if self._is_internet_available():
