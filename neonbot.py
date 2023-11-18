@@ -243,7 +243,15 @@ class neonbot(plugins.Plugin):
         usb0_ip = self._get_ipv4_address("usb0")
         eth0_ip = self._get_ipv4_address("eth0")
         bnep0_ip = self._get_ipv4_address("bnep0")
-        composite_output_text = f"CPU:{cpu}%  Mem:{memory}%\nCPU:{temperature:.0f}°\nETH0:{eth0_ip}\nUSB0:{usb0_ip}\nWLN0:{wlan0_ip}\nBT :{bnep0_ip}"
+        handshake_dir = "/root/handshakes/"
+        count = len([name for name in os.listdir(handshake_dir) if os.path.isfile(os.path.join(handshake_dir, name))])
+        with open('/proc/uptime', 'r') as f:
+            uptime_seconds = float(f.readline().split()[0])
+            uptime_minutes = uptime_seconds / 60
+            uptime_hours = int(uptime_minutes // 60)
+            uptime_remaining_minutes = int(uptime_minutes % 60)
+        session_text = f"Handshakes: {count}\nUptime {uptime_hours}hr and {uptime_remaining_minutes}min"
+        composite_output_text = f"Handshakes: {count}\nUptime: {uptime_hours}hr and {uptime_remaining_minutes}min\nCPU:{cpu}%  Mem:{memory}%\nCPU:{temperature:.0f}°\nETH0:{eth0_ip}\nUSB0:{usb0_ip}\nWLN0:{wlan0_ip}\nBT :{bnep0_ip}"
         if 'image' in args:
             result = self._composite_text_on_background(composite_output_text, output_image_path)
             if result == -1:
