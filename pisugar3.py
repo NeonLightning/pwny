@@ -17,18 +17,8 @@ class UPS:
         # 0 = /dev/i2c-0 (port I2C0), 1 = /dev/i2c-1 (port I2C1)
         self._bus = smbus.SMBus(1)
 
-    def voltage(self):
-        try:
-            low = self._bus.read_byte_data(0x57, 0x23)
-            high = self._bus.read_byte_data(0x57, 0x22)
-            v = (((high << 8) + low)/1000)
-            return v
-        except:
-            return 0.0
-
     def capacity(self):
         battery_level = 0
-        # battery_v = self.voltage()
         try:
             battery_level = self._bus.read_byte_data(0x57, 0x2a)
             return battery_level
@@ -42,16 +32,13 @@ class UPS:
         return stat02, stat03, stat04
 
 class PiSugar3(plugins.Plugin):
-    __author__ = 'taiyonemo@protonmail.com'
-    __version__ = '1.0.0'
+    __author__ = 'taiyonemo@protonmail.com edited by neonlightning'
+    __version__ = '1.0.3'
     __license__ = 'GPL3'
     __description__ = 'A plugin that will add a percentage indicator for the PiSugar 3'
 
     def __init__(self):
         self.ups = None
-        self.lasttemp = 100
-        self.drot = 0 # display rotation
-        self.nextDChg = 0 # last time display changed, rotate on updates after 5 seconds
 
     def on_loaded(self):
         self.ups = UPS()
@@ -73,33 +60,17 @@ class PiSugar3(plugins.Plugin):
 
     def on_ui_update(self, ui):
         capacity = self.ups.capacity()
-        voltage = self.ups.voltage()
         stats = self.ups.status()
-        temp = stats[2] - 40
-        if temp != self.lasttemp:
-            logging.debug("pisugar3 (chg %X, info %X, temp %d)" % (stats[0], stats[1], temp))
-            self.lasttemp = temp
-
-        if stats[0] & 0x80:  # charging, or has power connected
+        if stats[0] & 0x80:
             ui._state._state['bat'].label = "CHG"
         else:
             ui._state._state['bat'].label = "BAT"
-
-        if time.time() > self.nextDChg:
-            self.drot = (self.drot + 1) % 3
-            self.nextDChg = time.time() + 5
-
-        if self.drot == 0:  # show battery voltage
-            ui.set('bat', "%2.2fv" % (voltage))
-        elif self.drot == 1:
-            ui.set('bat', "%2i%%" % (capacity))
-        else:
-            ui.set('bat', "%2i\xb0" % (temp))
+        ui.set('bat', "%2i%%" % (capacity))
 
         if capacity <= self.options['shutdown']:
             logging.info('[pisugar3] Battery capacity low. Checking multiple times before shutdown.')
-            capacities = [capacity]  # List to store capacity values
-            for _ in range(5):  # Perform two additional checks, 1 second apart
+            capacities = [capacity]
+            for _ in range(5):
                 time.sleep(.5)
                 capacity = self.ups.capacity()
                 capacities.append(capacity)
