@@ -224,7 +224,7 @@ class neonbot(plugins.Plugin):
                 context.bot.send_document(chat_id=self.chat_id, document=open('/root/output.txt', 'rb'))
                 os.remove('/home/pi/output.txt')
 
-    def handle_handshake(self, update: Updater, context: CallbackContext) -> None:
+    def handle_handshake(self, update, context):
         args = context.args
         if args:
             try:
@@ -235,18 +235,16 @@ class neonbot(plugins.Plugin):
         else:
             self.display_files(update, context)
 
-    def display_files(self, update: Updater, context: CallbackContext) -> None:
+    def display_files(self, update, context):
         file_list = sorted([f for f in os.listdir(self.locdata_path) if f.endswith(tuple(self.possibleExt))])
-
         if file_list:
             chunk_size = 30
             num_files = len(file_list)
-            num_chunks = -(-num_files // chunk_size)  # Ceiling division to calculate chunks
+            num_chunks = -(-num_files // chunk_size)
             for i in range(num_chunks):
                 start = i * chunk_size
                 end = (i + 1) * chunk_size
                 files_chunk = file_list[start:end]
-
                 file_list_text = "\n".join([f"{start + j + 1}. {file_name}" for j, file_name in enumerate(files_chunk)])
                 message = f"Files available ({start + 1}-{min(start + chunk_size, num_files)} of {num_files}):\n{file_list_text}"
                 context.bot.send_message(chat_id=update.effective_chat.id, text=message)
@@ -255,7 +253,6 @@ class neonbot(plugins.Plugin):
 
     def send_file(self, update: Updater, file_number: int) -> None:
         file_list = sorted([f for f in os.listdir(self.locdata_path) if f.endswith(tuple(self.possibleExt))])
-
         if file_list and 0 < file_number <= len(file_list):
             file_to_send = os.path.join(self.locdata_path, file_list[file_number - 1])
             with open(file_to_send, 'rb') as file:
@@ -485,7 +482,7 @@ class neonbot(plugins.Plugin):
         self.updater.dispatcher.add_handler(CommandHandler('stats', self.stats_command))
         self.updater.dispatcher.add_handler(CommandHandler('screencap', self.screencap_command))
         self.updater.dispatcher.add_handler(CommandHandler('help', self.help_command))
-        self.updater.dispatcher.add_handler(CommandHandler("handshake", self.handle_handshake, pass_args=True))
+        self.updater.dispatcher.add_handler(CommandHandler("handshake", self.handle_handshake))
         self.updater.dispatcher.add_handler(MessageHandler(Filters.command, self.help_command))
         logging.info("[neonbot] Loaded.")
         self._startstopbot()
