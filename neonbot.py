@@ -26,6 +26,7 @@ class neonbot(plugins.Plugin):
         self.qrlist_path = "/root/.qrlist"
         self.qrcode_dir = '/root/qrcodes/'
         self.locdata_path = '/root/handshakes/'
+        self.possibleExt = ['.2500', '.16800', '.22000', '.pcap']
         self.bot_token = None
         self.chat_id = None
         self.updater = None
@@ -223,6 +224,45 @@ class neonbot(plugins.Plugin):
                 context.bot.send_document(chat_id=self.chat_id, document=open('/root/output.txt', 'rb'))
                 os.remove('/home/pi/output.txt')
 
+    def handle_handshake(self, update: Updater, context: CallbackContext) -> None:
+        args = context.args
+        if args:
+            try:
+                file_number = int(args[0])
+                self.send_file(update, file_number)
+            except (ValueError, IndexError):
+                self.display_files(update, context)
+        else:
+            self.display_files(update, context)
+
+    def display_files(self, update: Updater, context: CallbackContext) -> None:
+        file_list = sorted([f for f in os.listdir(self.locdata_path) if f.endswith(tuple(self.possibleExt))])
+
+        if file_list:
+            chunk_size = 30
+            num_files = len(file_list)
+            num_chunks = -(-num_files // chunk_size)  # Ceiling division to calculate chunks
+            for i in range(num_chunks):
+                start = i * chunk_size
+                end = (i + 1) * chunk_size
+                files_chunk = file_list[start:end]
+
+                file_list_text = "\n".join([f"{start + j + 1}. {file_name}" for j, file_name in enumerate(files_chunk)])
+                message = f"Files available ({start + 1}-{min(start + chunk_size, num_files)} of {num_files}):\n{file_list_text}"
+                context.bot.send_message(chat_id=update.effective_chat.id, text=message)
+        else:
+            update.message.reply_text("No files found.")
+
+    def send_file(self, update: Updater, file_number: int) -> None:
+        file_list = sorted([f for f in os.listdir(self.locdata_path) if f.endswith(tuple(self.possibleExt))])
+
+        if file_list and 0 < file_number <= len(file_list):
+            file_to_send = os.path.join(self.locdata_path, file_list[file_number - 1])
+            with open(file_to_send, 'rb') as file:
+                update.message.reply_document(document=file)
+        else:
+            update.message.reply_text("Invalid file number. Please choose a valid file number.")
+
     def screencap_command(self, update, context):
         photo_path = '/var/tmp/pwnagotchi/pwnagotchi.png'
         with Image.open(photo_path) as img:
@@ -413,6 +453,8 @@ class neonbot(plugins.Plugin):
             '/genqrcodes - Initialize or update qr codes',
             '/screencap - Send capture of current pwnagotchi face',
             '/stats - Send brief system info',
+            '/handshake - List all handshakes ',
+            '/handshake # - Handshake file sent for selection',
             '/qr_files - List all available qr codes',
             '/qr_files # - QR and login displayed for selection',
             '/run (command) - Run cmd and provide stdout',
@@ -443,6 +485,7 @@ class neonbot(plugins.Plugin):
         self.updater.dispatcher.add_handler(CommandHandler('stats', self.stats_command))
         self.updater.dispatcher.add_handler(CommandHandler('screencap', self.screencap_command))
         self.updater.dispatcher.add_handler(CommandHandler('help', self.help_command))
+        self.updater.dispatcher.add_handler(CommandHandler("handshake", self.handle_handshake, pass_args=True))
         self.updater.dispatcher.add_handler(MessageHandler(Filters.command, self.help_command))
         logging.info("[neonbot] Loaded.")
         self._startstopbot()
