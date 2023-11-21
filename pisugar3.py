@@ -46,7 +46,7 @@ class PiSugar3(plugins.Plugin):
 
     def on_ui_setup(self, ui):
         try:
-            ui.add_element('bat', LabeledValue(color=BLACK, label='BAT', value='0%', position=(ui.width() / 2 + 10, 0),
+            ui.add_element('bat', LabeledValue(color=BLACK, label='BAT :', value='0%', position=(ui.width() / 2 + 10, 0),
                                                label_font=fonts.Bold, text_font=fonts.Medium))
         except Exception as err:
             logging.warning("pisugar3 setup err: %s" % repr(err))
@@ -62,9 +62,9 @@ class PiSugar3(plugins.Plugin):
         capacity = self.ups.capacity()
         stats = self.ups.status()
         if stats[0] & 0x80:
-            ui._state._state['bat'].label = "CHG"
+            ui._state._state['bat'].label = "CHG :"
         else:
-            ui._state._state['bat'].label = "BAT"
+            ui._state._state['bat'].label = "BAT :"
         ui.set('bat', "%2i%%" % (capacity))
 
         if capacity <= self.options['shutdown']:
