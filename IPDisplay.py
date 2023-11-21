@@ -26,6 +26,8 @@ class IPDisplay(plugins.Plugin):
 
     def on_loaded(self):
         self.device_list = config['main']['plugins']['IPDisplay'].get('devices', [])
+        if self.device_list == None:
+            self.device_list = [bnep0]
         self.device_index = 0
         self.ui_element_name = 'ip1'
         self.ready = False  # Initialize ready state to False
@@ -56,6 +58,5 @@ class IPDisplay(plugins.Plugin):
 
     def on_unload(self, ui):
         self.ready = False
-        with ui._lock:
-            ui.remove_element(self.ui_element_name)
+        ui.remove_element(self.ui_element_name)
         logging.info("IP Display Plugin unloaded.")
