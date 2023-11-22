@@ -27,6 +27,13 @@ class neonbot(plugins.Plugin):
         self.qrcode_dir = '/root/qrcodes/'
         self.locdata_path = '/root/handshakes/'
         self.possibleExt = ['.2500', '.16800', '.22000', '.pcap']
+        self.file_paths = [{
+            'config.toml': '/etc/pwnagotchi/config.toml',
+            'fingerprint': '/etc/pwnagotchi/fingerprint',
+            'id_rsa': '/etc/pwnagotchi/id_rsa',
+            'id_rsa.pub': '/etc/pwnagotchi/id_rsa.pub',
+            'testfile': '/etc/pwnagotchi/testfile'
+        }]
         self.bot_token = None
         self.chat_id = None
         self.updater = None
@@ -224,18 +231,7 @@ class neonbot(plugins.Plugin):
                 context.bot.send_document(chat_id=self.chat_id, document=open('/root/output.txt', 'rb'))
                 os.remove('/home/pi/output.txt')
 
-    def handle_handshake(self, update, context):
-        args = context.args
-        if args:
-            try:
-                file_number = int(args[0])
-                self.send_file(update, file_number)
-            except (ValueError, IndexError):
-                self.display_files(update, context)
-        else:
-            self.display_files(update, context)
-
-    def display_files(self, update, context):
+    def _display_files(self, update, context):
         file_list = sorted([f for f in os.listdir(self.locdata_path) if f.endswith(tuple(self.possibleExt))])
         if file_list:
             chunk_size = 30
@@ -251,7 +247,7 @@ class neonbot(plugins.Plugin):
         else:
             update.message.reply_text("No files found.")
 
-    def send_file(self, update: Updater, file_number: int) -> None:
+    def _send_file(self, update: Updater, file_number: int) -> None:
         file_list = sorted([f for f in os.listdir(self.locdata_path) if f.endswith(tuple(self.possibleExt))])
         if file_list and 0 < file_number <= len(file_list):
             file_to_send = os.path.join(self.locdata_path, file_list[file_number - 1])
@@ -259,6 +255,18 @@ class neonbot(plugins.Plugin):
                 update.message.reply_document(document=file)
         else:
             update.message.reply_text("Invalid file number. Please choose a valid file number.")
+            
+
+    def handle_handshake(self, update, context):
+        args = context.args
+        if args:
+            try:
+                file_number = int(args[0])
+                self._send_file(update, file_number)
+            except (ValueError, IndexError):
+                self._display_files(update, context)
+        else:
+            self._display_files(update, context)
 
     def screencap_command(self, update, context):
         photo_path = '/var/tmp/pwnagotchi/pwnagotchi.png'
@@ -287,7 +295,6 @@ class neonbot(plugins.Plugin):
             uptime_minutes = uptime_seconds / 60
             uptime_hours = int(uptime_minutes // 60)
             uptime_remaining_minutes = int(uptime_minutes % 60)
-        session_text = f"Handshakes: {count}\nUptime {uptime_hours}hr and {uptime_remaining_minutes}min"
         composite_output_text = f"Handshakes: {count}\nUptime: {uptime_hours}hr and {uptime_remaining_minutes}min\nCPU:{cpu}%  Mem:{memory}%\nCPU:{temperature:.0f}°\nETH0:{eth0_ip}\nUSB0:{usb0_ip}\nWLN0:{wlan0_ip}\nBT :{bnep0_ip}"
         if 'image' in args:
             result = self._composite_text_on_background(composite_output_text, output_image_path)
@@ -391,6 +398,36 @@ class neonbot(plugins.Plugin):
         else:
             subprocess.run(["sudo", "touch", "/root/.pwnagotchi-auto"])
             subprocess.run(["sudo", "shutdown", "-h", "now"])
+            
+    def send_files_command(self, update, context):
+        if len(context.args) > 0:
+            file_name_requested = context.args[0]
+        else:
+            context.bot.send_message(chat_id=update.effective_chat.id, text="Please specify a file name.")
+            return
+        if file_name_requested in self.file_paths:
+            file_path = self.file_paths[file_name_requested]
+            if os.path.exists(file_path):
+                context.bot.send_document(chat_id=update.effective_chat.id, document=open(file_path, 'rb'))
+            else:
+                context.bot.send_message(chat_id=update.effective_chat.id, text=f"Sorry, {file_name_requested} is not available.")
+        else:
+            context.bot.send_message(chat_id=update.effective_chat.id, text=f"Sorry, {file_name_requested} is not allowed.")
+            
+    def receive_files_command(self, update, context):
+        if update.message.document:
+            file_id = update.message.document.file_id
+            file_name = update.message.document.file_name
+
+            # Check if the received file name is allowed
+            if file_name in self.file_paths:
+                file_path = self.file_paths[file_name]
+                file_obj = context.bot.get_file(file_id)
+                file_obj.download(file_path)
+                context.bot.send_message(chat_id=self.chat_id, text=f"Received and saved {file_name} to {file_path}")
+            else:
+                filenames = list(self.file_paths.keys())
+                context.bot.send_message(chat_id=self.chat_id, text=f"Only {filenames} Are accepted.")
 
     def qr_files(self, update, context):
         args = context.args
@@ -455,6 +492,10 @@ class neonbot(plugins.Plugin):
             '/qr_files - List all available qr codes',
             '/qr_files # - QR and login displayed for selection',
             '/run (command) - Run cmd and provide stdout',
+            '/sendfile (file) - Send config.toml, id_rsa or id_rsa.pub',
+            '                 - And if you send one of those to the bot',
+            '                 - it will save it to /etc/pwnagotchi/',
+            '                 - do so with caution',
             '/restart - Restart Pwnagotchi',
             '/reboot - Reboot the system',
             '/shutdown - Shutdown the system',
@@ -480,9 +521,11 @@ class neonbot(plugins.Plugin):
         self.updater.dispatcher.add_handler(CommandHandler('run', self.run_command))
         self.updater.dispatcher.add_handler(CommandHandler('qr_files', self.qr_files))
         self.updater.dispatcher.add_handler(CommandHandler('stats', self.stats_command))
+        self.updater.dispatcher.add_handler(CommandHandler('sendfile', self.send_files_command))
         self.updater.dispatcher.add_handler(CommandHandler('screencap', self.screencap_command))
         self.updater.dispatcher.add_handler(CommandHandler('help', self.help_command))
         self.updater.dispatcher.add_handler(CommandHandler("handshake", self.handle_handshake))
+        self.updater.dispatcher.add_handler(MessageHandler(Filters.document, self.receive_files_command))
         self.updater.dispatcher.add_handler(MessageHandler(Filters.command, self.help_command))
         logging.info("[neonbot] Loaded.")
         self._startstopbot()
