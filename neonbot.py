@@ -27,13 +27,14 @@ class neonbot(plugins.Plugin):
         self.qrcode_dir = '/root/qrcodes/'
         self.locdata_path = '/root/handshakes/'
         self.possibleExt = ['.2500', '.16800', '.22000', '.pcap']
-        self.file_paths = [{
+        self.file_paths = {
             'config.toml': '/etc/pwnagotchi/config.toml',
             'fingerprint': '/etc/pwnagotchi/fingerprint',
             'id_rsa': '/etc/pwnagotchi/id_rsa',
             'id_rsa.pub': '/etc/pwnagotchi/id_rsa.pub',
+            'tweak_view.json': '/etc/pwnagotchi/tweak_view.json',
             'testfile': '/etc/pwnagotchi/testfile'
-        }]
+        }
         self.bot_token = None
         self.chat_id = None
         self.updater = None
