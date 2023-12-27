@@ -74,6 +74,11 @@ class WeatherForecast(plugins.Plugin):
         self.geo_url = f"http://api.openweathermap.org/geo/1.0/zip?zip={self.areacode},{self.country}&appid={self.api_key}"
         logging.info(f"Weather Forecast Loaded")
 
+    def on_ready(self, agent):
+        if self._is_internet_available():
+                self.weather_response = requests.get(self.weather_url).json()
+                logging.info("Weather Updated")
+
     def _update_lat_lon(self):
         if config['main']['plugins']['gps']['enabled'] or config['main']['plugins']['gps_more']['enabled']:
             try:
@@ -149,11 +154,10 @@ class WeatherForecast(plugins.Plugin):
                 ui.remove_element('main')
             except KeyError:
                 pass
-            if config['ui']['faces']['png']:
-                try:
-                    ui.remove_element('icon')
-                    self.icon_path = os.path.join(self.plugin_dir, "weather", "circle.png")
-                    shutil.copy(self.icon_path, os.path.join(self.plugin_dir, "weather", "display.png"))
-                except KeyError:
-                    pass
+            try:
+                ui.remove_element('icon')
+                self.icon_path = os.path.join(self.plugin_dir, "weather", "circle.png")
+                shutil.copy(self.icon_path, os.path.join(self.plugin_dir, "weather", "display.png"))
+            except KeyError:
+                pass
             logging.info("Weather Plugin unloaded")
