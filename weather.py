@@ -53,7 +53,6 @@ class WeatherForecast(plugins.Plugin):
         self.country = config['main']['plugins']['weather']['countrycode']
         self.gps = config['main']['plugins']['weather']['gps']
         self.geo_url = f"http://api.openweathermap.org/geo/1.0/zip?zip={self.areacode},{self.country}&appid={self.api_key}"
-        self._update_lat_lon()
         logging.info(f"Weather Forecast Loaded")
 
     def _update_lat_lon(self):
@@ -86,6 +85,7 @@ class WeatherForecast(plugins.Plugin):
         logging.info("Weather setup feelslike")
         ui.add_element('main', components.LabeledValue(color=view.BLACK, label='', value='',
                                                             position=(90, 100), label_font=fonts.Small, text_font=fonts.Small))
+        self._update_lat_lon()
         logging.info("Weather setup main")
     
     def on_epoch(self, agent, epoch, epoch_data):
@@ -98,27 +98,28 @@ class WeatherForecast(plugins.Plugin):
                 self.timer += 1
 
     def on_ui_update(self, ui):
-        try:
-            tempk = self.weather_response['main']['feels_like']
-            tempc = round(tempk - 273.15, 1)
-            description = self.weather_response['weather'][0]['main']
-            seticon = self.weather_response['weather'][0]['icon']
-            source_path = os.path.join(self.plugin_dir, "weather", f"{seticon}.png")
-            if config['ui']['faces']['png']:
-                if seticon != self.previous_seticon:
-                    if os.path.exists(source_path):
-                        logging.info(f"Copying icon from {source_path}")
-                        shutil.copy(source_path, os.path.join(self.plugin_dir, "weather", "display.png"))
-                    else:
-                        ui.set('main', 'WTHR: Icon Not Found')
-                        logging.info(f"Weather ERROR: ICON NOT FOUND {source_path}")
-                    self.previous_seticon = seticon
-            ui.set('feels', f"TEMP:{tempc}°C")
-            ui.set('main', f"WTHR:{description}")
-        except Exception as e:
-            ui.set('main', 'WTHR: Error')
-            ui.set('feels', f'Temp: {e}')
-            logging.info(f"Weather ERROR: {e}")
+        if self.weather_response:
+            try:
+                tempk = self.weather_response['main']['feels_like']
+                tempc = round(tempk - 273.15, 1)
+                description = self.weather_response['weather'][0]['main']
+                seticon = self.weather_response['weather'][0]['icon']
+                source_path = os.path.join(self.plugin_dir, "weather", f"{seticon}.png")
+                if config['ui']['faces']['png']:
+                    if seticon != self.previous_seticon:
+                        if os.path.exists(source_path):
+                            logging.info(f"Copying icon from {source_path}")
+                            shutil.copy(source_path, os.path.join(self.plugin_dir, "weather", "display.png"))
+                        else:
+                            ui.set('main', 'WTHR: Icon Not Found')
+                            logging.info(f"Weather ERROR: ICON NOT FOUND {source_path}")
+                        self.previous_seticon = seticon
+                ui.set('feels', f"TEMP:{tempc}°C")
+                ui.set('main', f"WTHR:{description}")
+            except Exception as e:
+                ui.set('main', 'WTHR: Error')
+                ui.set('feels', f'Temp: {e}')
+                logging.exception(f"Weather ERROR: {e}")
 
     def on_unload(self, ui):
         with ui._lock:
