@@ -7,6 +7,7 @@
 # main.plugins.weather.gps = "/dev/ttyACM0"
 # (even if you don't have a gps set this...)
 # but if you want gps for weather you'll need gps.py or gps_more.py
+# don't forget to grab the weather folder and put it in your custom plugins too
 
 import os, logging, re, pwnagotchi, toml, json, requests, urllib.request, shutil
 from pwnagotchi import plugins, config
