@@ -7,7 +7,6 @@
 # main.plugins.weather.gps = "/dev/ttyACM0"
 # (even if you don't have a gps set this...)
 # but if you want gps for weather you'll need gps.py or gps_more.py
-# REQUIRES CUSTOM-FACES-MOD for icon display
 
 import os, logging, re, pwnagotchi, toml, json, requests, urllib.request, shutil
 from pwnagotchi import plugins, config
@@ -17,9 +16,30 @@ import pwnagotchi.ui.fonts as fonts
 import pwnagotchi.plugins as plugins
 from pwnagotchi.ui.components import Text
 from pwnagotchi.bettercap import Client
-from PIL import ImageDraw
+from PIL import ImageDraw, ImageOps, Image
 
-agent = Client('localhost', port=8081, username="pwnagotchi", password="pwnagotchi");    
+agent = Client('localhost', port=8081, username="pwnagotchi", password="pwnagotchi");
+
+class WeatherIcon(pwnagotchi.ui.components.Widget):
+    def __init__(self, value="", position=(0, 0), color=0, png=False):
+        super().__init__(position, color)
+        self.value = value
+
+    def draw(self, canvas, drawer):
+        if self.value is not None:
+            self.image = Image.open(self.value)
+            self.image = self.image.convert('RGBA')
+            self.pixels = self.image.load()
+            for y in range(self.image.size[1]):
+                for x in range(self.image.size[0]):
+                    if self.pixels[x,y][3] < 255:    # check alpha
+                        self.pixels[x,y] = (255, 255, 255, 255)
+            if self.color == 255:
+                self._image = ImageOps.colorize(self.image.convert('L'), black = "white", white = "black")
+            else:
+                self._image = self.image
+            self.image = self._image.convert('1')
+            canvas.paste(self.image, self.xy)    
 
 class WeatherForecast(plugins.Plugin):
     __author__ = 'NeonLightning'
@@ -47,7 +67,7 @@ class WeatherForecast(plugins.Plugin):
         self.timer = 12
         self.plugin_dir = os.path.dirname(os.path.realpath(__file__))
         self.icon_path = os.path.join(self.plugin_dir, "weather", "display.png")
-        self.icon = Text(value=self.icon_path, png=True, position=(147, 35))
+        #self.icon = Text(value=self.icon_path, png=True, position=(147, 35))
         self.api_key = config['main']['plugins']['weather']['api_key']
         self.areacode = config['main']['plugins']['weather']['areacode']
         self.country = config['main']['plugins']['weather']['countrycode']
@@ -78,7 +98,7 @@ class WeatherForecast(plugins.Plugin):
 
     def on_ui_setup(self, ui):
         logging.info("Weather setup")
-        ui.add_element('icon', self.icon)        
+        ui.add_element('icon', WeatherIcon(value=self.icon_path, png=True, position=(147, 35)))        
         logging.info("Weather setup icon")
         ui.add_element('feels', components.LabeledValue(color=view.BLACK, label='', value='',
                                                                    position=(90, 85), label_font=fonts.Small, text_font=fonts.Small))
