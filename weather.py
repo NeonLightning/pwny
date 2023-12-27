@@ -67,7 +67,6 @@ class WeatherForecast(plugins.Plugin):
         self.timer = 12
         self.plugin_dir = os.path.dirname(os.path.realpath(__file__))
         self.icon_path = os.path.join(self.plugin_dir, "weather", "display.png")
-        #self.icon = Text(value=self.icon_path, png=True, position=(147, 35))
         self.api_key = config['main']['plugins']['weather']['api_key']
         self.areacode = config['main']['plugins']['weather']['areacode']
         self.country = config['main']['plugins']['weather']['countrycode']
@@ -125,15 +124,14 @@ class WeatherForecast(plugins.Plugin):
                 description = self.weather_response['weather'][0]['main']
                 seticon = self.weather_response['weather'][0]['icon']
                 source_path = os.path.join(self.plugin_dir, "weather", f"{seticon}.png")
-                if config['ui']['faces']['png']:
-                    if seticon != self.previous_seticon:
-                        if os.path.exists(source_path):
-                            logging.info(f"Copying icon from {source_path}")
-                            shutil.copy(source_path, os.path.join(self.plugin_dir, "weather", "display.png"))
-                        else:
-                            ui.set('main', 'WTHR: Icon Not Found')
-                            logging.info(f"Weather ERROR: ICON NOT FOUND {source_path}")
-                        self.previous_seticon = seticon
+                if seticon != self.previous_seticon:
+                    if os.path.exists(source_path):
+                        logging.info(f"Copying icon from {source_path}")
+                        shutil.copy(source_path, os.path.join(self.plugin_dir, "weather", "display.png"))
+                    else:
+                        ui.set('main', 'WTHR: Icon Not Found')
+                        logging.info(f"Weather ERROR: ICON NOT FOUND {source_path}")
+                    self.previous_seticon = seticon
                 ui.set('feels', f"TEMP:{tempc}°C")
                 ui.set('main', f"WTHR:{description}")
             except Exception as e:
