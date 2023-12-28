@@ -4,6 +4,7 @@
 # https://home.openweathermap.org/api_keys
 # main.plugins.weather.areacode = "postal/zip"
 # main.plugins.weather.countrycode = "countrycode"
+# main.plugins.weather.gpson = true or false
 # but if you want gps for weather you'll need gps.py or gps_more.py
 
 import os, logging, re, pwnagotchi, toml, json, requests, urllib.request, shutil
@@ -67,6 +68,7 @@ class WeatherForecast(plugins.Plugin):
         self.api_key = config['main']['plugins']['weather']['api_key']
         self.areacode = config['main']['plugins']['weather']['areacode']
         self.country = config['main']['plugins']['weather']['countrycode']
+        self.gpson = config['main']['plugins']['weather']['gpson']
         self.geo_url = f"http://api.openweathermap.org/geo/1.0/zip?zip={self.areacode},{self.country}&appid={self.api_key}"
 
     def on_ready(self, agent):
@@ -76,17 +78,20 @@ class WeatherForecast(plugins.Plugin):
                 logging.info("Weather Ready")
 
     def _update_lat_lon(self):
-        if config['main']['plugins']['gps']['enabled'] or config['main']['plugins']['gps_more']['enabled']:
-            try:
-                info = agent.session()
-                coords = info.get("gps", {})
-                if all([coords.get("Latitude"), coords.get("Longitude")]):
-                    self.lat = coords["Latitude"]
-                    self.lon = coords["Longitude"]
-            except Exception as err:
-                logging.warn(f"Failed to get GPS coordinates: {err}")
+        if self.gpson == True:
+            if config['main']['plugins']['gps']['enabled'] or config['main']['plugins']['gps_more']['enabled']:
+                try:
+                    info = agent.session()
+                    coords = info.get("gps", {})
+                    if all([coords.get("Latitude"), coords.get("Longitude")]):
+                        self.lat = coords["Latitude"]
+                        self.lon = coords["Longitude"]
+                except Exception as err:
+                    logging.warn(f"Failed to get GPS coordinates: {err}")
+            else:
+                pass
         else:
-            logging.info("weather update location gps disabled")
+            logging.debug("weather update location gps disabled")
             try:
                 geo_response = requests.get(self.geo_url).json()
                 self.lat = geo_response.get('lat')
@@ -94,21 +99,18 @@ class WeatherForecast(plugins.Plugin):
             except Exception as err:
                 logging.error(f"Error fetching latitude:{self.lat} and longitude:{self.lon} error:{err}")
         self.weather_url = f"https://api.openweathermap.org/data/2.5/weather?lat={self.lat}&lon={self.lon}&appid={self.api_key}"
-        logging.info (f"weather url: {self.weather_url}")
+        logging.debug (f"weather url: {self.weather_url}")
         if self._is_internet_available():
             self.weather_response = requests.get(self.weather_url).json()
 
     def on_ui_setup(self, ui):
-        logging.info("Weather setup")
         ui.add_element('icon', WeatherIcon(value=self.icon_path, png=True, position=(147, 35)))        
-        logging.info("Weather setup icon")
         ui.add_element('feels', components.LabeledValue(color=view.BLACK, label='', value='',
                                                                    position=(90, 85), label_font=fonts.Small, text_font=fonts.Small))
-        logging.info("Weather setup feelslike")
         ui.add_element('main', components.LabeledValue(color=view.BLACK, label='', value='',
                                                             position=(90, 100), label_font=fonts.Small, text_font=fonts.Small))
         self._update_lat_lon()
-        logging.info("Weather setup main")
+        logging.debug("Weather ui set")
     
     def on_epoch(self, agent, epoch, epoch_data):
         if self._is_internet_available():
@@ -129,11 +131,11 @@ class WeatherForecast(plugins.Plugin):
                 source_path = os.path.join(self.plugin_dir, "weather", f"{seticon}.png")
                 if seticon != self.previous_seticon:
                     if os.path.exists(source_path):
-                        logging.info(f"Copying icon from {source_path}")
+                        logging.debug(f"Weather Copying icon from {source_path}")
                         shutil.copy(source_path, os.path.join(self.plugin_dir, "weather", "display.png"))
                     else:
                         ui.set('main', 'WTHR: Icon Not Found')
-                        logging.info(f"Weather ERROR: ICON NOT FOUND {source_path}")
+                        logging.error(f"Weather ERROR: ICON NOT FOUND {source_path}")
                     self.previous_seticon = seticon
                 ui.set('feels', f"TEMP:{tempc}°C")
                 ui.set('main', f"WTHR:{description}")
