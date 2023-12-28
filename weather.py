@@ -4,10 +4,7 @@
 # https://home.openweathermap.org/api_keys
 # main.plugins.weather.areacode = "postal/zip"
 # main.plugins.weather.countrycode = "countrycode"
-# main.plugins.weather.gps = "/dev/ttyACM0"
-# (even if you don't have a gps set this...)
 # but if you want gps for weather you'll need gps.py or gps_more.py
-# don't forget to grab the weather folder and put it in your custom plugins too
 
 import os, logging, re, pwnagotchi, toml, json, requests, urllib.request, shutil
 from pwnagotchi import plugins, config
@@ -58,7 +55,6 @@ class WeatherForecast(plugins.Plugin):
         
     def on_loaded(self):
         self.previous_seticon = None
-        self.api_key = None
         self.areacode = None
         self.country = None
         self.lat = None
@@ -71,14 +67,13 @@ class WeatherForecast(plugins.Plugin):
         self.api_key = config['main']['plugins']['weather']['api_key']
         self.areacode = config['main']['plugins']['weather']['areacode']
         self.country = config['main']['plugins']['weather']['countrycode']
-        self.gps = config['main']['plugins']['weather']['gps']
         self.geo_url = f"http://api.openweathermap.org/geo/1.0/zip?zip={self.areacode},{self.country}&appid={self.api_key}"
-        logging.info(f"Weather Forecast Loaded")
 
     def on_ready(self, agent):
         if self._is_internet_available():
+                self._update_lat_lon()
                 self.weather_response = requests.get(self.weather_url).json()
-                logging.info("Weather Updated")
+                logging.info("Weather Ready")
 
     def _update_lat_lon(self):
         if config['main']['plugins']['gps']['enabled'] or config['main']['plugins']['gps_more']['enabled']:
@@ -91,13 +86,15 @@ class WeatherForecast(plugins.Plugin):
             except Exception as err:
                 logging.warn(f"Failed to get GPS coordinates: {err}")
         else:
+            logging.info("weather update location gps disabled")
             try:
                 geo_response = requests.get(self.geo_url).json()
                 self.lat = geo_response.get('lat')
                 self.lon = geo_response.get('lon')
             except Exception as err:
-                logging.error(f"Error fetching latitude and longitude: {err}")
+                logging.error(f"Error fetching latitude:{self.lat} and longitude:{self.lon} error:{err}")
         self.weather_url = f"https://api.openweathermap.org/data/2.5/weather?lat={self.lat}&lon={self.lon}&appid={self.api_key}"
+        logging.info (f"weather url: {self.weather_url}")
         if self._is_internet_available():
             self.weather_response = requests.get(self.weather_url).json()
 
