@@ -2,7 +2,7 @@
 # main.plugins.weather.enabled = true
 # main.plugins.weather.api_key = ""
 # https://home.openweathermap.org/api_keys
-# main.plugins.weather.areacode = "postal/zip"
+# main.plugins.weather.areacode = "postal or zip"
 # main.plugins.weather.countrycode = "countrycode"
 # main.plugins.weather.gpson = true or false
 # but if you want gps for weather you'll need gps.py or gps_more.py
@@ -42,7 +42,7 @@ class WeatherIcon(pwnagotchi.ui.components.Widget):
 
 class WeatherForecast(plugins.Plugin):
     __author__ = 'NeonLightning'
-    __version__ = '1.1.0'
+    __version__ = '1.4.0'
     __license__ = 'GPL3'
     __description__ = 'A plugin that displays the weather forecast on the pwnagotchi screen.'
     __name__ = 'WeatherForecast'
@@ -62,7 +62,6 @@ class WeatherForecast(plugins.Plugin):
         self.lon = None
         self.cords = None
         self.weather_response = None
-        self.timer = 12
         self.plugin_dir = os.path.dirname(os.path.realpath(__file__))
         self.icon_path = os.path.join(self.plugin_dir, "weather", "display.png")
         self.api_key = config['main']['plugins']['weather']['api_key']
@@ -72,6 +71,7 @@ class WeatherForecast(plugins.Plugin):
         self.geo_url = f"http://api.openweathermap.org/geo/1.0/zip?zip={self.areacode},{self.country}&appid={self.api_key}"
 
     def on_ready(self, agent):
+        self.timer = 12
         if self._is_internet_available():
                 self._update_lat_lon()
                 self.weather_response = requests.get(self.weather_url).json()
@@ -114,7 +114,7 @@ class WeatherForecast(plugins.Plugin):
     
     def on_epoch(self, agent, epoch, epoch_data):
         if self._is_internet_available():
-            if self.timer == 12:
+            if self.timer >= 12:
                 self.weather_response = requests.get(self.weather_url).json()
                 self.timer = 0
                 logging.info("Weather Updated")
