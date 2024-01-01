@@ -25,14 +25,12 @@ class IPDisplay(plugins.Plugin):
 
     def __init__(self):
         self.options = dict()
-        self.device_list = []
+        self.device_list = ['bnep0', 'usb0', 'eth0']
         self.device_index = 0
         self.ready = False
 
     def on_loaded(self):
         self.device_list = self.options['devices']
-        if self.device_list is None:
-            self.device_list = ['bnep0']
         self.device_index = 0
         logging.debug("IP Display Plugin loaded.")
         
