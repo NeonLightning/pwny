@@ -7,7 +7,7 @@ import logging
 import datetime
 
 class PwnClock(plugins.Plugin):
-    __author__ = 'https://github.com/LoganMD'
+    __author__ = 'originally https://github.com/LoganMD redone by NeonLightning'
     __version__ = '1.0.3'
     __license__ = 'GPL3'
     __description__ = 'Clock/Calendar for pwnagotchi'
