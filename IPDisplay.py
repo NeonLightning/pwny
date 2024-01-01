@@ -7,7 +7,6 @@
 #     'wlan0',
 #     'ect...'
 # ]
-
 from pwnagotchi.ui.components import LabeledValue
 from pwnagotchi.ui.view import BLACK
 import pwnagotchi.ui.fonts as fonts
@@ -15,7 +14,6 @@ import pwnagotchi.plugins as plugins
 import logging
 import subprocess
 import ipaddress
-
 
 class IPDisplay(plugins.Plugin):
     __author__ = 'NeonLightning'
@@ -32,8 +30,7 @@ class IPDisplay(plugins.Plugin):
     def on_loaded(self):
         if 'devices' in self.options:
             self.device_list = self.options['devices']
-        else:
-            self.options['devices'] = self.device_list
+        self.options['devices'] = self.device_list
         logging.debug("IP Display Plugin loaded.")
         
     def on_ready(self):
@@ -47,18 +44,14 @@ class IPDisplay(plugins.Plugin):
 
     def on_ui_update(self, ui):
         current_device = self.device_list[self.device_index]
-        logging.debug(f'IPDisplay Device {current_device}')
         command = f"ip -4 addr show {current_device} | awk '/inet / {{print $2}}' | cut -d '/' -f 1 | head -n 1"
         netip = subprocess.getoutput(command).strip()
-        logging.debug(f'IPDisplay IP {netip}')
         if netip:
             try:
                 ipaddress.ip_address(netip)
                 ui.set('ip1', f'{current_device}:{netip}')
             except ValueError:
                 logging.debug(f"Invalid IP address found for {current_device}: {netip}")
-        else:
-            logging.debug(f"No IP address found for {current_device}")
         self.device_index = (self.device_index + 1) % len(self.device_list)
 
     def on_unload(self, ui):
