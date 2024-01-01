@@ -7,6 +7,8 @@
 #     'wlan0',
 #     'ect...'
 # ]
+# main.plugins.IPDisplay.position = "0, 0"
+
 from pwnagotchi.ui.components import LabeledValue
 from pwnagotchi.ui.view import BLACK
 import pwnagotchi.ui.fonts as fonts
@@ -16,8 +18,8 @@ import subprocess
 import ipaddress
 
 class IPDisplay(plugins.Plugin):
-    __author__ = 'NeonLightning'
-    __version__ = '0.9.5'
+    __author__ = 'NeonLightning(thank to NurseJackass and jayofelony)'
+    __version__ = '1.0.0'
     __license__ = 'GPL3'
     __description__ = 'Display IP addresses on the Pwnagotchi UI'
 
@@ -39,6 +41,8 @@ class IPDisplay(plugins.Plugin):
 
     def on_ui_setup(self, ui):
         pos1 = (0, 82)
+        if 'position' in self.options:
+            pos1 = self.options['position']
         ui.add_element('ip1', LabeledValue(color=BLACK, label="", value='Initializing...',
                                            position=pos1, label_font=fonts.Small, text_font=fonts.Small))
 
