@@ -30,16 +30,18 @@ class IPDisplay(plugins.Plugin):
         self.ready = False
 
     def on_loaded(self):
-        self.device_list = self.options['devices']
-        self.device_index = 0
+        if 'devices' in self.options:
+            self.device_list = self.options['devices']
+        else:
+            self.options['devices'] = self.device_list
         logging.debug("IP Display Plugin loaded.")
         
     def on_ready(self):
         self.ready = True
-        logging.debug("IP Display Plugin ready.")
+        logging.info("IP Display Plugin ready.")
 
     def on_ui_setup(self, ui):
-        pos1 = (150, 13)
+        pos1 = (0, 82)
         ui.add_element('ip1', LabeledValue(color=BLACK, label="", value='Initializing...',
                                            position=pos1, label_font=fonts.Small, text_font=fonts.Small))
 
@@ -62,4 +64,4 @@ class IPDisplay(plugins.Plugin):
     def on_unload(self, ui):
         self.ready = False
         ui.remove_element('ip1')
-        logging.debug("IP Display Plugin unloaded.")
+        logging.info("IP Display Plugin unloaded.")
