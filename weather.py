@@ -16,7 +16,7 @@ import pwnagotchi.plugins as plugins
 from pwnagotchi.ui.components import Text
 from pwnagotchi.bettercap import Client
 
-agent = Client('localhost', port=8081, username="pwnagotchi", password="pwnagotchi");
+#agent = Client('localhost', port=8081, username="pwnagotchi", password="pwnagotchi");
 
 class WeatherForecast(plugins.Plugin):
     __author__ = 'NeonLightning'
@@ -27,7 +27,7 @@ class WeatherForecast(plugins.Plugin):
 
     def _is_internet_available(self):
         try:
-            urllib.request.urlopen('https://www.google.com', timeout=1)
+            urllib.request.urlopen('https://www.google.com', timeout=0.5)
             return True
         except urllib.request.URLError:
             return False
