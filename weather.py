@@ -8,7 +8,7 @@
 # (disabled for now)hmain.plugins.weather.gpson = true or false
 # (disabled for now)but if you want gps for weather you'll need gps.py or gps_more.py
 
-import logging, pwnagotchi, json, requests, urllib.request, os, shutil
+import logging, pwnagotchi, json, requests, urllib.request, os, shutil, time
 from pwnagotchi import plugins, config
 import pwnagotchi.ui.components as components
 import pwnagotchi.ui.view as view
@@ -63,6 +63,7 @@ class WeatherForecast(plugins.Plugin):
         self.lon = None
         self.cords = None
         self.weather_response = None
+        self.readyweathertimer = 0
         self.plugin_dir = os.path.dirname(os.path.realpath(__file__))
         self.icon_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "weather", "display.png")
         logging.debug(f"weathericon: {self.icon_path}")
@@ -74,11 +75,12 @@ class WeatherForecast(plugins.Plugin):
         self.geo_url = f"http://api.openweathermap.org/geo/1.0/zip?zip={self.areacode},{self.country}&appid={self.api_key}"
 
     def on_ready(self, agent):
-        self.timer = 12
         if self._is_internet_available():
                 self._update_lat_lon()
                 self.weather_response = requests.get(self.weather_url).json()
-                logging.info("Weather Ready")
+        else:
+            logging.info("Weather Not Ready")
+        logging.info("Weather Ready")
 
     def _update_lat_lon(self):
         if self.gpson == True:
@@ -107,8 +109,6 @@ class WeatherForecast(plugins.Plugin):
             self.weather_response = requests.get(self.weather_url).json()
 
     def on_ui_setup(self, ui):
-        logging.info("on_ui_setup")
-        logging.info(f"on_ui_setup{self.icon_path}")
         ui.add_element('weathericon', WeatherIcon(value=self.icon_path, png=True, position=(147, 35)))
         ui.add_element('weatherfeels', components.LabeledValue(color=view.BLACK, label='', value='',
                                                                    position=(90, 85), label_font=fonts.Small, text_font=fonts.Small))
