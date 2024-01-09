@@ -7,7 +7,7 @@
 #     'wlan0',
 #     'ect...'
 # ]
-# main.plugins.IPDisplay.position = "0, 0"
+# main.plugins.IPDisplay.position = "0, 82"
 
 from pwnagotchi.ui.components import LabeledValue
 from pwnagotchi.ui.view import BLACK
