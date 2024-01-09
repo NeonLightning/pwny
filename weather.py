@@ -4,8 +4,8 @@
 # https://home.openweathermap.org/api_keys
 # main.plugins.weather.areacode = "postal or zip"
 # main.plugins.weather.countrycode = "countrycode"
-# main.plugins.weather.gpson = true or false
-# but if you want gps for weather you'll need gps.py or gps_more.py
+# (disabled for now)hmain.plugins.weather.gpson = true or false
+# (disabled for now)but if you want gps for weather you'll need gps.py or gps_more.py
 
 import logging, pwnagotchi, json, requests, urllib.request
 from pwnagotchi import plugins, config
