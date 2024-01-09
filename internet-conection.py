@@ -1,11 +1,11 @@
-import logging, time, os, subprocess, pwnagotchi, urllib.request
+import logging, os, pwnagotchi, urllib.request
 import pwnagotchi.ui.components as components
 import pwnagotchi.ui.view as view
 import pwnagotchi.ui.fonts as fonts
 import pwnagotchi.plugins as plugins
 from pwnagotchi.ui.components import Text
 from pwnagotchi import plugins
-from PIL import ImageDraw, ImageOps, Image
+from PIL import ImageOps, Image
 
 class InetIcon(pwnagotchi.ui.components.Widget):
     def __init__(self, value="", position=(0, 100), color=0, png=False):
@@ -49,7 +49,7 @@ class InternetConnectionPlugin(plugins.Plugin):
 
     def on_ui_setup(self, ui):
         try:
-            ui.add_element('icon', InetIcon(value=self.icon_path, png=True)) 
+            ui.add_element('ineticon', InetIcon(value=self.icon_path, png=True)) 
         except Exception as e:
             logging.info(f"Error loading {e}")
                          
@@ -69,7 +69,7 @@ class InternetConnectionPlugin(plugins.Plugin):
     def on_unload(self, ui):
         with ui._lock:
             try:
-                ui.remove_element('icon')
+                ui.remove_element('ineticon')
             except KeyError:
                 pass
             try:
@@ -79,7 +79,7 @@ class InternetConnectionPlugin(plugins.Plugin):
             
     def _is_internet_available(self):
         try:
-            urllib.request.urlopen('https://www.google.com', timeout=1)
+            urllib.request.urlopen('https://www.google.com', timeout=0.5)
             return True
         except urllib.request.URLError:
             return False
