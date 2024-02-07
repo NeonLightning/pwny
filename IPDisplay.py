@@ -61,10 +61,9 @@ class IPDisplay(plugins.Plugin):
     
     def on_ui_update(self, ui):
         try:
-            if time.time() - self.last_update_time < 2:  # Check if at least 2 seconds have passed
+            if time.time() - self.last_update_time < 2:
                 return
-            self.last_update_time = time.time()  # Update the last update time
-            # Your existing on_ui_update logic here
+            self.last_update_time = time.time()
             if self.skip_time + 5 > time.time():
                 return
             self.device_index += 1
