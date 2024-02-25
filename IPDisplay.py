@@ -72,6 +72,14 @@ class IPDisplay(plugins.Plugin):
             if self.device_index >= len(ifaces):
                 self.device_index = 0
             current_device = ifaces[self.device_index]
+            if current_device is "bnep0":
+                connected_devices = subprocess.check_output(['hcitool', 'con'])
+                if len(connected_devices) == 0:
+                    return
+                else:
+                    self.device_index += 1
+                    if self.device_index >= len(ifaces):
+                        self.device_index = 0
             ui.set('ip1', f'{current_device}')
         except Exception as e:
             logging.exception(repr(e))   
