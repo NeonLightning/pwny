@@ -8,6 +8,7 @@
 #     'ect...'
 # ]
 # main.plugins.IPDisplay.position = "0, 82"
+# main.plugins.IPDisplay.delay_time = 2 # how many seconds to delay cycling devices
 
 from pwnagotchi.ui.components import LabeledValue
 from pwnagotchi.ui.view import BLACK
@@ -28,11 +29,12 @@ class IPDisplay(plugins.Plugin):
         self.options = dict()
         self.device_skip_list = ['lo']
         self.device_index = 0
-        self.skip_time = 0
         self.ready = False
         self.last_update_time = 0
 
     def on_loaded(self):
+        if 'delay_time' in self.options:
+            self.skip_time = self.options['delay_time']
         if 'skip_devices' in self.options:
             self.device_skip_list = self.options['skip_devices']
         self.options['skip_devices'] = self.device_skip_list
@@ -61,13 +63,10 @@ class IPDisplay(plugins.Plugin):
     
     def on_ui_update(self, ui):
         try:
-            if time.time() - self.last_update_time < 2:
+            if time.time() - self.last_update_time < (self.skip_time if self.skip_time else 2):
                 return
             self.last_update_time = time.time()
-            if self.skip_time + 5 > time.time():
-                return
             self.device_index += 1
-            self.skip_time = time.time()
             ifaces = self.get_iface_addrs()
             if self.device_index >= len(ifaces):
                 self.device_index = 0
