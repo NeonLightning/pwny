@@ -1,3 +1,6 @@
+#internet-conection.png and internet-conection-off.png required
+# still have to manually setup positions either in this file or using tweak_view
+
 import logging, os, pwnagotchi, urllib.request
 import pwnagotchi.ui.components as components
 import pwnagotchi.ui.view as view
