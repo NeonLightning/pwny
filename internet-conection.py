@@ -8,7 +8,7 @@ from pwnagotchi import plugins
 from PIL import ImageOps, Image
 
 class InetIcon(pwnagotchi.ui.components.Widget):
-    def __init__(self, value="", position=(0, 100), color=0, png=False):
+    def __init__(self, value="", position=(220, 101), color=0, png=False):
         super().__init__(position, color)
         self.value = value
 
@@ -30,7 +30,7 @@ class InetIcon(pwnagotchi.ui.components.Widget):
 
 class InternetConnectionPlugin(plugins.Plugin):
     __author__ = 'neonlightning'
-    __version__ = '1.0.0'
+    __version__ = '1.0.2'
     __license__ = 'GPL3'
     __description__ = 'A plugin that displays the Internet connection status on the pwnagotchi display.'
     __name__ = 'InternetConectionPlugin'
@@ -42,29 +42,30 @@ class InternetConnectionPlugin(plugins.Plugin):
         'enabled': False,
     }
     def __init__(self):
-        self.icon_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "wifi.png")
+        self.icon_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "internet-conection.png")
+        self.icon_off_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "internet-conection-off.png")
 
     def on_loaded(self):
         logging.info("Internet Connection Plugin loaded.")
 
     def on_ui_setup(self, ui):
         try:
-            ui.add_element('ineticon', InetIcon(value=self.icon_path, png=True)) 
+            ui.add_element('connection_status', InetIcon(value=self.icon_path, png=True)) 
         except Exception as e:
             logging.info(f"Error loading {e}")
                          
-        ui.add_element('connection_status', components.LabeledValue(color=view.BLACK, label='', value='',
-                                                                   position=(10, 100), label_font=fonts.Small, text_font=fonts.Small))
+        ui.add_element('ineticon', components.LabeledValue(color=view.BLACK, label='Inet:', value='',
+                                                                   position=(195, 100), label_font=fonts.Small, text_font=fonts.Small))
         if self._is_internet_available():
-            ui.set('connection_status', 'Connected')
+            ui.set('connection_status', self.icon_path) 
         else:
-            ui.set('connection_status', 'Disconnected')
+            ui.set('connection_status', self.icon_off_path)
 
     def on_ui_update(self, ui):
         if self._is_internet_available():
-            ui.set('connection_status', 'Connected')
+            ui.set('connection_status', self.icon_path) 
         else:
-            ui.set('connection_status', 'Disconnected')
+            ui.set('connection_status', self.icon_off_path)
 
     def on_unload(self, ui):
         with ui._lock:
@@ -76,6 +77,7 @@ class InternetConnectionPlugin(plugins.Plugin):
                 ui.remove_element('connection_status')
             except KeyError:
                 pass
+        logging.info("Internet Connection Plugin unloaded.")
             
     def _is_internet_available(self):
         try:

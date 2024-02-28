@@ -68,6 +68,9 @@ class IPDisplay(plugins.Plugin):
             self.last_update_time = time.time()
             self.device_index += 1
             ifaces = self.get_iface_addrs()
+            if not ifaces:
+                ui.set('ip1', '')
+                return
             if self.device_index >= len(ifaces):
                 self.device_index = 0
             current_device = ifaces[self.device_index]
