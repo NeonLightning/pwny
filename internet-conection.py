@@ -1,7 +1,7 @@
 #internet-conection.png and internet-conection-off.png required
 # still have to manually setup positions either in this file or using tweak_view
 
-import logging, os, pwnagotchi, urllib.request
+import logging, os, pwnagotchi, urllib.request, requests
 import pwnagotchi.ui.components as components
 import pwnagotchi.ui.view as view
 import pwnagotchi.ui.fonts as fonts
@@ -48,9 +48,20 @@ class InternetConnectionPlugin(plugins.Plugin):
         self.icon_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "internet-conection.png")
         self.icon_off_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "internet-conection-off.png")
 
-    def on_loaded(self):
-        logging.info("Internet Connection Plugin loaded.")
+    def download_icon(self, url, save_path):
+        response = requests.get(url)
+        with open(save_path, 'wb') as file:
+            file.write(response.content)
 
+    def on_loaded(self):
+        if not os.path.exists(self.icon_path):
+            logging.info("internet-conection: on icon path not found")
+            self.download_icon("https://raw.githubusercontent.com/NeonLightning/pwny/main/internet-conection.png", self.icon_path)
+        if not os.path.exists(self.icon_off_path):
+            logging.info("internet-conection: off icon path not found")
+            self.download_icon("https://raw.githubusercontent.com/NeonLightning/pwny/main/internet-conection-off.png", self.icon_off_path)
+        logging.info("Internet Connection Plugin loaded.")
+        
     def on_ui_setup(self, ui):
         try:
             ui.add_element('connection_status', InetIcon(value=self.icon_path, png=True)) 
