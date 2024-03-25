@@ -31,6 +31,7 @@ class IPDisplay(plugins.Plugin):
         self.device_index = 0
         self.ready = False
         self.last_update_time = 0
+        self.skip_time = 0
 
     def on_loaded(self):
         if 'delay_time' in self.options:
