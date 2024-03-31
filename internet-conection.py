@@ -87,14 +87,11 @@ class InternetConnectionPlugin(plugins.Plugin):
                 ui.set('connection_status', self.icon_path) 
             else:
                 ui.set('connection_status', self.icon_off_path)
-            logging.info("Internet-conection: Screen Invert False")
-
         elif invert_status == True:
             if self._is_internet_available():
                 ui.set('connection_status', self.icon_invert_path) 
             else:
                 ui.set('connection_status', self.icon_invert_off_path)
-            logging.info("Internet-conection: Screen Invert True")
     def on_ui_update(self, ui):
         if invert_status == False:
 
@@ -130,15 +127,23 @@ class InternetConnectionPlugin(plugins.Plugin):
             with open("/etc/pwnagotchi/config.toml", "r") as f:
                 config = f.readlines()
         except FileNotFoundError:
-            logging.warning("Internet-conection: Config File not found")
+            logging.warning("Internet-Connection: Config File not found")
             return False
-        except EndOfFileError:
+        except EOFError:
             pass
+        
         for line in config:
-            line.strip()
-            if line.find("ui.invert = true") != -1 or line.find("ui.invert = True") != -1 or line.find("ui.invert = TRUE") != -1:
-                return True
-            elif line.find("ui.invert = false") != -1 or line.find("ui.invert = False") != -1 or line.find("ui.invert = FALSE") != -1:
-                return False
-            else:
-                return False
+            line = line.strip()
+            line = line.strip('\n')
+            if "ui.invert = true" in line or "ui.invert = false" in line or "ui.invert = True" in line or "ui.invert = False" in line or "ui.invert=TRUE" in line or "ui.invert=FALSE" in line:
+
+                if line.find("ui.invert = true") != -1:
+                    logging.info("Internet-Connection: Screen Invert True")
+                    return True
+                    
+                elif line.find("ui.invert = false") != -1:
+                    logging.info("Internet-Connection: Screen Invert False")
+                    return False
+        
+        logging.info("Internet-Connection: Screen Invert Error")
+        return False
