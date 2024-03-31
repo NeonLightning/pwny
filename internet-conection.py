@@ -57,20 +57,20 @@ class InternetConnectionPlugin(plugins.Plugin):
     def on_loaded(self):
         if not os.path.exists(self.icon_path):
             logging.info("internet-conection: on icon path not found")
-            self.download_icon("https://raw.githubusercontent.com/OnlyNandan/pwny/main/internet-conection.png", self.icon_path)  #If merging change Url to https://raw.githubusercontent.com/NeonLightning/pwny/main/internet-conection.png
+            self.download_icon("https://raw.githubusercontent.com/NeonLightning/pwny/main/internet-conection.png", self.icon_path)
     
         if not os.path.exists(self.icon_off_path):
             logging.info("internet-conection: off icon path not found")
-            self.download_icon("https://raw.githubusercontent.com/OnlyNandan/pwny/main/internet-conection-off.png", self.icon_off_path) #If merging change Url to https://raw.githubusercontent.com/NeonLightning/pwny/main/internet-conection-off.png
+            self.download_icon("https://raw.githubusercontent.com/NeonLightning/pwny/main/internet-conection-off.png", self.icon_off_path)
         logging.info("Internet Connection Plugin loaded.")
 
         if not os.path.exists(self.icon_invert_path):
             logging.info("internet-conection: on icon path not found")
-            self.download_icon("https://raw.githubusercontent.com/OnlyNandan/pwny/main/internet-conection-invert.png", self.icon_invert_path) #If merging change Url to https://raw.githubusercontent.com/NeonLightning/pwny/main/internet-conection-invert.png
+            self.download_icon("https://raw.githubusercontent.com/NeonLightning/pwny/main/internet-conection-invert.png", self.icon_invert_path)
 
         if not os.path.exists(self.icon_invert_off_path):
             logging.info("internet-conection: off icon path not found")
-            self.download_icon("https://raw.githubusercontent.com/OnlyNandan/pwny/main/internet-conection-off-invert.png", self.icon_invert_off_path) #If merging change Url to https://raw.githubusercontent.com/NeonLightning/pwny/main/internet-conection-off-invert.png
+            self.download_icon("https://raw.githubusercontent.com/NeonLightning/pwny/main/internet-conection-off-invert.png", self.icon_invert_off_path)
 
     def on_ui_setup(self, ui):
         global invert_status
