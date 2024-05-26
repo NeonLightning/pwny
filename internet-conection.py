@@ -8,7 +8,7 @@ from pwnagotchi import plugins
 from PIL import ImageOps, Image
 
 class InetIcon(pwnagotchi.ui.components.Widget):
-    def __init__(self, value="", position=(235, 101), color=0, png=False):
+    def __init__(self, value="", position=(225, 101), color=0, png=False):
         super().__init__(position, color)
         self.value = value
 
@@ -77,7 +77,7 @@ class InternetConectionPlugin(plugins.Plugin):
         except Exception as e:
             logging.info(f"Error loading {e}")
         ui.add_element('ineticon', components.LabeledValue(color=view.BLACK, label='', value='',
-                                                                   position=(235, 100), label_font=fonts.Small, text_font=fonts.Small))
+                                                                   position=(195, 100), label_font=fonts.Small, text_font=fonts.Small))
         invert_status = self.invert()
         if invert_status == False:
 
