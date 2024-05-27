@@ -1,6 +1,8 @@
 
 #goto openweathermap.org and get an api key.
 #setup main.plugins.weather2pwn.api_key = "apikey"
+#depends on gpsd and clients installed
+ 
 import socket, json, requests, logging
 from pwnagotchi.ui.components import LabeledValue
 from pwnagotchi.ui.view import BLACK
