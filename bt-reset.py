@@ -30,7 +30,7 @@ class BTReset(Plugin):
         else:
             if datetime.now() - self.last_connected > timedelta(minutes=self.timeout_minutes):
                 logging.info(f"[BT-Reset] Bluetooth not connected for {self.timeout_minutes} minutes. Restarting Pwnagotchi service.")
-                subprocess.run(['sudo', 'systemctl', 'restart', 'pwnagotchi'])
+                subprocess.run(['sudo', 'pwnkill'])
 
     def on_ready(self, agent):
         while self.selfrunning:
