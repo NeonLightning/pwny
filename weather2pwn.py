@@ -5,7 +5,7 @@
 # also for getbycity set main.plugins.weather2pwn.city_id = "city id on openweathermap.org"
 #depends on gpsd and clients installed
  
-import socket, json, requests, logging, os, toml, time, urllib
+import socket, json, requests, logging, os, toml, time
 from pwnagotchi.ui.components import LabeledValue
 from pwnagotchi.ui.view import BLACK
 import pwnagotchi.ui.fonts as fonts
