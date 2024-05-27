@@ -93,7 +93,7 @@ class Weather2Pwn(plugins.Plugin):
         logging.debug("[Weather2Pwn] oninternet available")
         self.internet_counter += 1
         logging.debug(f"[Weather2Pwn] oninternet available counter is {self.internet_counter}")
-        if self.internet_counter % 3 == 0:
+        if self.internet_counter % 6 == 0:
             logging.debug("[Weather2Pwn] Internet call is officially available.")
             latitude, longitude = self.get_gps_coordinates()
             if latitude and longitude:
@@ -136,7 +136,7 @@ if __name__ == "__main__":
     if os.path.exists(config_file):
         with open(config_file, 'r') as f:
             config = toml.load(f)
-            if 'main' in config and 'plugins' in config['main'] and 'weather2pwn' in config['main']['plugins']:
+            if 'weather2pwn' in config['main']['plugins']:
                 api_key = config['main']['plugins']['weather2pwn'].get('api_key', '')
     plugin = Weather2Pwn()
     plugin.api_key = api_key
