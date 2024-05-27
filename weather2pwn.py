@@ -145,6 +145,7 @@ class Weather2Pwn(plugins.Plugin):
                         logging.error("[Weather2Pwn] Failed to fetch weather data.")
                 else:
                     logging.error("[Weather2Pwn] GPS coordinates not obtained.")
+                self.last_fetch_time = current_time
         else:
             logging.debug("[Weather2Pwn] Internet is available but not fetching weather data this time.")
  
