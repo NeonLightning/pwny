@@ -13,7 +13,7 @@ class Weather2Pwn(plugins.Plugin):
     __author__ = 'NeonLightning'
     __version__ = '1.0.0'
     __license__ = 'GPL3'
-    __description__ = 'weather display from locdata'
+    __description__ = 'Weather display from location data'
 
     def _is_internet_available(self):
         try:
@@ -68,7 +68,7 @@ class Weather2Pwn(plugins.Plugin):
                     logging.error("[Weather2Pwn] Failed to fetch weather data.")
             
     def on_loaded(self):
-        self.api_key = self.options['api_key']
+        self.api_key = self.options.get('api_key', '')
         logging.info("[Weather2Pwn] Plugin loaded.")
 
     def on_ui_setup(self, ui):
@@ -89,7 +89,7 @@ class Weather2Pwn(plugins.Plugin):
         logging.info("[Weather2Pwn] Internet is available.")
         latitude, longitude = self.get_gps_coordinates()
         if latitude and longitude:
-            logging.info(f"[Weather2Pwn]  lat {latitude}  long {longitude}")
+            logging.info(f"[Weather2Pwn] Latitude: {latitude}, Longitude: {longitude}")
             self.weather_data = self.get_weather_by_gps(latitude, longitude, self.api_key)
             if self.weather_data:
                 logging.info("[Weather2Pwn] Weather data obtained successfully.")
@@ -97,33 +97,25 @@ class Weather2Pwn(plugins.Plugin):
                 logging.error("[Weather2Pwn] Failed to fetch weather data.")
  
     def on_ui_update(self, ui):
-        if self._is_internet_available():
-            if self.weather_data:
-                if "name" in self.weather_data:
-                    city_name = self.weather_data["name"]
-                    logging.debug(f"[Weather2Pwn] City: {city_name}")
-                    ui.set('city', f"{city_name}")
-                if "main" in self.weather_data and "feels_like" in self.weather_data["main"]:
-                    feels_like = self.weather_data["main"]["feels_like"]
-                    logging.debug(f"[Weather2Pwn] Feels Like: {feels_like}")
-                    ui.set('feels_like', f"{feels_like}°C")
-                if "weather" in self.weather_data and len(self.weather_data["weather"]) > 0:
-                    main_weather = self.weather_data["weather"][0]["main"]
-                    logging.debug(f"[Weather2Pwn] Weather: {main_weather}")
-                    ui.set('weather', f"{main_weather}")
+        if self._is_internet_available() and self.weather_data:
+            if "name" in self.weather_data:
+                city_name = self.weather_data["name"]
+                logging.debug(f"[Weather2Pwn] City: {city_name}")
+                ui.set('city', f"{city_name}")
+            if "main" in self.weather_data and "feels_like" in self.weather_data["main"]:
+                feels_like = self.weather_data["main"]["feels_like"]
+                logging.debug(f"[Weather2Pwn] Feels Like: {feels_like}")
+                ui.set('feels_like', f"{feels_like}°C")
+            if "weather" in self.weather_data and len(self.weather_data["weather"]) > 0:
+                main_weather = self.weather_data["weather"][0]["main"]
+                logging.debug(f"[Weather2Pwn] Weather: {main_weather}")
+                ui.set('weather', f"{main_weather}")
                 
     def on_unload(self, ui):
         with ui._lock:
-            try:
-                ui.remove_element('city')
-            except KeyError:
-                pass
-            try:
-                ui.remove_element('feels_like')
-            except KeyError:
-                pass
-            try:
-                ui.remove_element('weather')
-            except KeyError:
-                pass
+            for element in ['city', 'feels_like', 'weather']:
+                try:
+                    ui.remove_element(element)
+                except KeyError:
+                    pass
             logging.info("[Weather2Pwn] Unloaded")
