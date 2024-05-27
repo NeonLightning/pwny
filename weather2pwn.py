@@ -1,7 +1,7 @@
-import socket
-import json
-import requests
-import logging
+
+#goto openweathermap.org and get an api key.
+#setup main.plugins.weather2pwn.api_key = "apikey"
+import socket, json, requests, logging
 from pwnagotchi.ui.components import LabeledValue
 from pwnagotchi.ui.view import BLACK
 import pwnagotchi.ui.fonts as fonts
@@ -9,7 +9,7 @@ import pwnagotchi.plugins as plugins
 
 class Weather2Pwn(plugins.Plugin):
     __author__ = 'NeonLightning'
-    __version__ = '0.0.1'
+    __version__ = '1.0.0'
     __license__ = 'GPL3'
     __description__ = 'weather display from locdata'
 
