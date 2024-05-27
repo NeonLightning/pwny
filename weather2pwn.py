@@ -57,10 +57,10 @@ class Weather2Pwn(plugins.Plugin):
         
     def on_ready(self, agent):
         if self._is_internet_available():
-            logging.info("[Weather2Pwn] Internet is available.")
+            logging.debug("[Weather2Pwn] Internet is available.")
             latitude, longitude = self.get_gps_coordinates()
             if latitude and longitude:
-                logging.info(f"[Weather2Pwn] GPS coordinates obtained: {latitude}, {longitude}")
+                logging.debug(f"[Weather2Pwn] GPS coordinates obtained: {latitude}, {longitude}")
                 self.weather_data = self.get_weather_by_gps(latitude, longitude, self.api_key)
                 if self.weather_data:
                     logging.info("[Weather2Pwn] Weather data obtained successfully.")
@@ -86,10 +86,10 @@ class Weather2Pwn(plugins.Plugin):
                                                 label_font=fonts.Small, text_font=fonts.Small))
 
     def on_internet_available(self):
-        logging.info("[Weather2Pwn] Internet is available.")
+        logging.debug("[Weather2Pwn] Internet is available.")
         latitude, longitude = self.get_gps_coordinates()
         if latitude and longitude:
-            logging.info(f"[Weather2Pwn] Latitude: {latitude}, Longitude: {longitude}")
+            logging.debug(f"[Weather2Pwn] Latitude: {latitude}, Longitude: {longitude}")
             self.weather_data = self.get_weather_by_gps(latitude, longitude, self.api_key)
             if self.weather_data:
                 logging.info("[Weather2Pwn] Weather data obtained successfully.")
