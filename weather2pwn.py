@@ -71,6 +71,9 @@ class Weather2Pwn(plugins.Plugin):
         self.api_key = self.options.get('api_key', '')
         logging.info("[Weather2Pwn] Plugin loaded.")
 
+    def on_agent(self, agent) -> None:
+        self.on_internet_available(self, agent)
+        
     def on_ui_setup(self, ui):
         pos1 = (150, 37)
         ui.add_element('city', LabeledValue(color=BLACK, label='', value='',
@@ -85,8 +88,8 @@ class Weather2Pwn(plugins.Plugin):
                                                 position=pos3,
                                                 label_font=fonts.Small, text_font=fonts.Small))
 
-    def on_internet_available(self):
-        logging.info("[Weather2Pwn] oninternet available")
+    def on_internet_available(self, agent):
+        logging.debug("[Weather2Pwn] oninternet available")
         self.internet_counter += 1
         if self.internet_counter % 3 == 0:
             logging.info("[Weather2Pwn] Internet call is officially available.")
