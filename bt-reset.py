@@ -1,6 +1,6 @@
-import time
-import subprocess
-import logging
+# you can configure the time using
+# main.plugins.btreset.timeout_minutes = 30
+import time, subprocess, logging
 from datetime import datetime, timedelta
 from pwnagotchi.plugins import Plugin
 
