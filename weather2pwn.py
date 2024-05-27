@@ -57,7 +57,7 @@ class Weather2Pwn(plugins.Plugin):
         
     def on_ready(self, agent):
         if self._is_internet_available():
-            logging.debug("[Weather2Pwn] Internet is available.")
+            logging.info("[Weather2Pwn] Internet is available on load.")
             latitude, longitude = self.get_gps_coordinates()
             if latitude and longitude:
                 logging.debug(f"[Weather2Pwn] GPS coordinates obtained: {latitude}, {longitude}")
@@ -86,15 +86,20 @@ class Weather2Pwn(plugins.Plugin):
                                                 label_font=fonts.Small, text_font=fonts.Small))
 
     def on_internet_available(self):
-        logging.debug("[Weather2Pwn] Internet is available.")
-        latitude, longitude = self.get_gps_coordinates()
-        if latitude and longitude:
-            logging.debug(f"[Weather2Pwn] Latitude: {latitude}, Longitude: {longitude}")
-            self.weather_data = self.get_weather_by_gps(latitude, longitude, self.api_key)
-            if self.weather_data:
-                logging.info("[Weather2Pwn] Weather data obtained successfully.")
-            else:
-                logging.error("[Weather2Pwn] Failed to fetch weather data.")
+        logging.info("[Weather2Pwn] oninternet available")
+        self.internet_counter += 1
+        if self.internet_counter % 3 == 0:
+            logging.info("[Weather2Pwn] Internet call is officially available.")
+            latitude, longitude = self.get_gps_coordinates()
+            if latitude and longitude:
+                logging.debug(f"[Weather2Pwn] Latitude: {latitude}, Longitude: {longitude}")
+                self.weather_data = self.get_weather_by_gps(latitude, longitude, self.api_key)
+                if self.weather_data:
+                    logging.info("[Weather2Pwn] Weather data obtained successfully.")
+                else:
+                    logging.error("[Weather2Pwn] Failed to fetch weather data.")
+        else:
+            logging.debug("[Weather2Pwn] Internet is available but not fetching weather data this time.")
  
     def on_ui_update(self, ui):
         if self._is_internet_available() and self.weather_data:
