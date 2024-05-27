@@ -1,11 +1,11 @@
 
 #goto openweathermap.org and get an api key.
-#setup main.plugins.weather2pwn.api_key = "apikey"
+#setup main.plugins.weather2pwn.api_key = "apikey from openweathermap.org"
 #if you lack a gps or don't want to use itsetup main.plugins.weather2pwn..getbycity = "true"
 # also for getbycity set main.plugins.weather2pwn.city_id = "city id on openweathermap.org"
 #depends on gpsd and clients installed
  
-import socket, json, requests, logging, os, toml, time, subprocess
+import socket, json, requests, logging, os, time
 from pwnagotchi.ui.components import LabeledValue
 from pwnagotchi.ui.view import BLACK
 import pwnagotchi.ui.fonts as fonts
@@ -19,7 +19,7 @@ class Weather2Pwn(plugins.Plugin):
 
     def _is_internet_available(self):
         try:
-            socket.create_connection(("www.google.com", 80))
+            socket.create_connection(("api.openweathermap.org", 80))
             return True
         except OSError:
             return False
@@ -151,8 +151,8 @@ class Weather2Pwn(plugins.Plugin):
         logging.debug(f"[Weather2Pwn] converted getbycity: {self.getbycity}")
         self.city_id = self.options.get('city_id', '')
         logging.debug(f"[Weather2Pwn] got city_id {self.city_id}")
-        self.last_fetch_time = 3599
-        self.fetch_interval = 3600 
+        self.last_fetch_time = 1800
+        self.fetch_interval = 1800 
         logging.info("[Weather2Pwn] Plugin loaded.")
 
     def on_agent(self, agent) -> None:
