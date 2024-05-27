@@ -1,11 +1,11 @@
 
 #goto openweathermap.org and get an api key.
 #setup main.plugins.weather2pwn.api_key = "apikey"
-#if you lack a gps or don't want to use it setup main.plugins.weather2pwn.getbycity = "true"
+#if you lack a gps or don't want to use itsetup main.plugins.weather2pwn..getbycity = "true"
 # also for getbycity set main.plugins.weather2pwn.city_id = "city id on openweathermap.org"
 #depends on gpsd and clients installed
  
-import socket, json, requests, logging, os, toml, time
+import socket, json, requests, logging, os, toml, time, subprocess
 from pwnagotchi.ui.components import LabeledValue
 from pwnagotchi.ui.view import BLACK
 import pwnagotchi.ui.fonts as fonts
@@ -13,7 +13,7 @@ import pwnagotchi.plugins as plugins
 
 class Weather2Pwn(plugins.Plugin):
     __author__ = 'NeonLightning'
-    __version__ = '1.0.3'
+    __version__ = '1.0.2'
     __license__ = 'GPL3'
     __description__ = 'Weather display from location data'
 
@@ -128,6 +128,7 @@ class Weather2Pwn(plugins.Plugin):
             logging.error(f"[Weather2Pwn] Exception occurred while processing config file: {e}")
 
     def on_loaded(self):
+        logging.info("[Weather2Pwn] loading")
         self.internet_counter = 0
         if os.path.exists('/tmp/weather2pwn_data.json'):
             os.remove('/tmp/weather2pwn_data.json')
@@ -138,9 +139,18 @@ class Weather2Pwn(plugins.Plugin):
         self.check_and_update_config('main.plugins.weather2pwn.getbycity', 'false')
         logging.debug("[Weather2Pwn] checking for cityid")
         self.check_and_update_config('main.plugins.weather2pwn.cityid', '""')
+        logging.debug("[Weather2Pwn] checking for config")
         self.api_key = self.options.get('api_key', '')
-        self.getbycity = self.options.get('getbycity', 'false').lower() == 'true'
+        logging.debug(f"[Weather2Pwn] got api_key {self.api_key}")
+        getbycity_option = self.options.get('getbycity', 'false')
+        logging.debug(f"[Weather2Pwn] raw getbycity option: {getbycity_option}")
+        if isinstance(getbycity_option, bool):
+            self.getbycity = getbycity_option
+        else:
+            self.getbycity = getbycity_option.lower() == 'true'
+        logging.debug(f"[Weather2Pwn] converted getbycity: {self.getbycity}")
         self.city_id = self.options.get('city_id', '')
+        logging.debug(f"[Weather2Pwn] got city_id {self.city_id}")
         self.last_fetch_time = 3599
         self.fetch_interval = 3600 
         logging.info("[Weather2Pwn] Plugin loaded.")
@@ -213,17 +223,3 @@ class Weather2Pwn(plugins.Plugin):
                 except KeyError:
                     pass
             logging.info("[Weather2Pwn] Unloaded")
-
-if __name__ == "__main__":
-    config_file = '/etc/pwnagotchi/config.toml'
-    api_key = ''
-    if os.path.exists(config_file):
-        with open(config_file, 'r') as f:
-            config = toml.load(f)
-            if 'weather2pwn' in config['main']['plugins']:
-                api_key = config['main']['plugins']['weather2pwn'].get('api_key', '')
-                getbycity = config['main']['plugins']['weather2pwn'].get('getbycity', 'false')
-                city_id = config['main']['plugins']['weather2pwn'].get('city_id', '')
-    plugin = Weather2Pwn()
-    plugin.api_key = api_key
-    plugin.on_ready(None)
