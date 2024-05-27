@@ -1,7 +1,7 @@
 
 #goto openweathermap.org and get an api key.
 #setup main.plugins.weather2pwn.api_key = "apikey from openweathermap.org"
-#if you lack a gps or don't want to use itsetup main.plugins.weather2pwn..getbycity = "true"
+#if you lack a gps or don't want to use itsetup main.plugins.weather2pwn.getbycity = "true"
 # also for getbycity set main.plugins.weather2pwn.city_id = "city id on openweathermap.org"
 #depends on gpsd and clients installed
  
@@ -13,7 +13,7 @@ import pwnagotchi.plugins as plugins
 
 class Weather2Pwn(plugins.Plugin):
     __author__ = 'NeonLightning'
-    __version__ = '1.0.2'
+    __version__ = '1.0.3'
     __license__ = 'GPL3'
     __description__ = 'Weather display from location data'
 
