@@ -3,7 +3,7 @@
 #setup main.plugins.weather2pwn.api_key = "apikey"
 #depends on gpsd and clients installed
  
-import socket, json, requests, logging, os, toml
+import socket, json, requests, logging, os, toml, time
 from pwnagotchi.ui.components import LabeledValue
 from pwnagotchi.ui.view import BLACK
 import pwnagotchi.ui.fonts as fonts
@@ -60,16 +60,22 @@ class Weather2Pwn(plugins.Plugin):
             logging.info("[Weather2Pwn] Internet is available on load.")
             latitude, longitude = self.get_gps_coordinates()
             if latitude and longitude:
-                logging.debug(f"[Weather2Pwn] GPS coordinates obtained: {latitude}, {longitude}")
+                logging.info(f"[Weather2Pwn] GPS coordinates obtained: {latitude}, {longitude}")
                 self.weather_data = self.get_weather_by_gps(latitude, longitude, self.api_key)
                 if self.weather_data:
+                    with open('/tmp/weather2pwn_data.json', 'w') as f:
+                        json.dump(self.weather_data, f)
                     logging.info("[Weather2Pwn] Weather data obtained successfully.")
                 else:
                     logging.error("[Weather2Pwn] Failed to fetch weather data.")
+            else:
+                logging.error("[Weather2Pwn] GPS coordinates not obtained.")
             
     def on_loaded(self):
         self.internet_counter = 0
         self.api_key = self.options.get('api_key', '')
+        self.last_fetch_time = 3599
+        self.fetch_interval = 3600 
         logging.info("[Weather2Pwn] Plugin loaded.")
 
     def on_agent(self, agent) -> None:
@@ -90,10 +96,8 @@ class Weather2Pwn(plugins.Plugin):
                                                 label_font=fonts.Small, text_font=fonts.Small))
 
     def on_internet_available(self, agent):
-        logging.debug("[Weather2Pwn] oninternet available")
-        self.internet_counter += 1
-        logging.debug(f"[Weather2Pwn] oninternet available counter is {self.internet_counter}")
-        if self.internet_counter % 6 == 0:
+        current_time = time.time()
+        if current_time - self.last_fetch_time >= self.fetch_interval:
             logging.debug("[Weather2Pwn] Internet call is officially available.")
             latitude, longitude = self.get_gps_coordinates()
             if latitude and longitude:
@@ -103,23 +107,28 @@ class Weather2Pwn(plugins.Plugin):
                     logging.info("[Weather2Pwn] Weather data obtained successfully.")
                 else:
                     logging.error("[Weather2Pwn] Failed to fetch weather data.")
+                self.last_fetch_time = current_time
         else:
             logging.debug("[Weather2Pwn] Internet is available but not fetching weather data this time.")
  
     def on_ui_update(self, ui):
-        if self._is_internet_available() and self.weather_data:
-            if "name" in self.weather_data:
-                city_name = self.weather_data["name"]
-                logging.debug(f"[Weather2Pwn] City: {city_name}")
-                ui.set('city', f"{city_name}")
-            if "main" in self.weather_data and "feels_like" in self.weather_data["main"]:
-                feels_like = self.weather_data["main"]["feels_like"]
-                logging.debug(f"[Weather2Pwn] Feels Like: {feels_like}")
-                ui.set('feels_like', f"{feels_like}°C")
-            if "weather" in self.weather_data and len(self.weather_data["weather"]) > 0:
-                main_weather = self.weather_data["weather"][0]["main"]
-                logging.debug(f"[Weather2Pwn] Weather: {main_weather}")
-                ui.set('weather', f"{main_weather}")
+        if self._is_internet_available():
+            if os.path.exists('/tmp/weather2pwn_data.json'):
+                with open('/tmp/weather2pwn_data.json', 'r') as f:
+                    self.weather_data = json.load(f)
+            if self.weather_data:
+                if "name" in self.weather_data:
+                    city_name = self.weather_data["name"]
+                    logging.debug(f"[Weather2Pwn] City: {city_name}")
+                    ui.set('city', f"{city_name}")
+                if "main" in self.weather_data and "feels_like" in self.weather_data["main"]:
+                    feels_like = self.weather_data["main"]["feels_like"]
+                    logging.debug(f"[Weather2Pwn] Feels Like: {feels_like}")
+                    ui.set('feels_like', f"{feels_like}°C")
+                if "weather" in self.weather_data and len(self.weather_data["weather"]) > 0:
+                    main_weather = self.weather_data["weather"][0]["main"]
+                    logging.debug(f"[Weather2Pwn] Weather: {main_weather}")
+                    ui.set('weather', f"{main_weather}")
                 
     def on_unload(self, ui):
         with ui._lock:
