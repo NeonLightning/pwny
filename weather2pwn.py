@@ -1,9 +1,11 @@
 
 #goto openweathermap.org and get an api key.
 #setup main.plugins.weather2pwn.api_key = "apikey"
+#if you lack a gps or don't want to use itsetup main.plugins.weather2pwn..getbycity = "true"
+# also for getbycity set main.plugins.weather2pwn.city_id = "city id on openweathermap.org"
 #depends on gpsd and clients installed
  
-import socket, json, requests, logging, os, toml, time
+import socket, json, requests, logging, os, toml, time, urllib
 from pwnagotchi.ui.components import LabeledValue
 from pwnagotchi.ui.view import BLACK
 import pwnagotchi.ui.fonts as fonts
@@ -22,6 +24,24 @@ class Weather2Pwn(plugins.Plugin):
         except OSError:
             return False
 
+    def get_weather_by_city_id(self):
+        try:
+            base_url = "http://api.openweathermap.org/data/2.5/weather"
+            complete_url = f"{base_url}?id={self.city_id}&appid={self.api_key}&units=metric&lang=en"
+            logging.debug(f"[Weather2Pwn] Weather API URL: {complete_url}")
+            response = requests.get(complete_url)
+            logging.debug(f"[Weather2Pwn] Weather API Response: {response.text}")
+            if response.status_code == 200:
+                data = response.json()
+                logging.debug(f"[Weather2Pwn] Weather data for city ID {self.city_id} obtained.")
+                return data
+            else:
+                logging.error(f"[Weather2Pwn] Error fetching weather data: {response.status_code}")
+                return None
+        except Exception as e:
+            logging.error(f"[Weather2Pwn] Exception fetching weather data: {e}")
+            return None
+    
     def get_gps_coordinates(self):
         try:
             gpsd_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -57,23 +77,33 @@ class Weather2Pwn(plugins.Plugin):
         
     def on_ready(self, agent):
         if self._is_internet_available():
-            logging.info("[Weather2Pwn] Internet is available on load.")
-            latitude, longitude = self.get_gps_coordinates()
-            if latitude and longitude:
-                logging.info(f"[Weather2Pwn] GPS coordinates obtained: {latitude}, {longitude}")
-                self.weather_data = self.get_weather_by_gps(latitude, longitude, self.api_key)
-                if self.weather_data:
-                    with open('/tmp/weather2pwn_data.json', 'w') as f:
-                        json.dump(self.weather_data, f)
-                    logging.info("[Weather2Pwn] Weather data obtained successfully.")
-                else:
-                    logging.error("[Weather2Pwn] Failed to fetch weather data.")
+            logging.debug("[Weather2Pwn] Internet is available on load.")
+            if self.getbycity:
+                logging.debug("[Weather2Pwn] bycity")
+                self.weather_data = self.get_weather_by_city_id()
             else:
-                logging.error("[Weather2Pwn] GPS coordinates not obtained.")
+                logging.debug("[Weather2Pwn] bygps")
+                latitude, longitude = self.get_gps_coordinates()
+                if latitude and longitude:
+                    logging.debug(f"[Weather2Pwn] GPS coordinates obtained: {latitude}, {longitude}")
+                    self.weather_data = self.get_weather_by_gps(latitude, longitude, self.api_key)
+                    if self.weather_data:
+                        with open('/tmp/weather2pwn_data.json', 'w') as f:
+                            json.dump(self.weather_data, f)
+                        logging.info("[Weather2Pwn] Weather data obtained successfully.")
+                    else:
+                        logging.error("[Weather2Pwn] Failed to fetch weather data.")
+                else:
+                    logging.error("[Weather2Pwn] GPS coordinates not obtained.")
             
     def on_loaded(self):
         self.internet_counter = 0
+        if os.path.exists('/tmp/weather2pwn_data.json'):
+            os.remove('/tmp/weather2pwn_data.json')
+            logging.debug("[Weather2Pwn] Existing weather data JSON file deleted.")
         self.api_key = self.options.get('api_key', '')
+        self.getbycity = self.options.get('getbycity', 'False')
+        self.city_id = self.options.get('city_id', '')
         self.last_fetch_time = 3599
         self.fetch_interval = 3600 
         logging.info("[Weather2Pwn] Plugin loaded.")
@@ -98,16 +128,23 @@ class Weather2Pwn(plugins.Plugin):
     def on_internet_available(self, agent):
         current_time = time.time()
         if current_time - self.last_fetch_time >= self.fetch_interval:
-            logging.debug("[Weather2Pwn] Internet call is officially available.")
-            latitude, longitude = self.get_gps_coordinates()
-            if latitude and longitude:
-                logging.debug(f"[Weather2Pwn] Latitude: {latitude}, Longitude: {longitude}")
-                self.weather_data = self.get_weather_by_gps(latitude, longitude, self.api_key)
-                if self.weather_data:
-                    logging.info("[Weather2Pwn] Weather data obtained successfully.")
+            if self.getbycity:
+                logging.debug("[Weather2Pwn] bycity")
+                self.weather_data = self.get_weather_by_city_id()
+            else:
+                logging.debug("[Weather2Pwn] bygps")
+                latitude, longitude = self.get_gps_coordinates()
+                if latitude and longitude:
+                    logging.debug(f"[Weather2Pwn] GPS coordinates obtained: {latitude}, {longitude}")
+                    self.weather_data = self.get_weather_by_gps(latitude, longitude, self.api_key)
+                    if self.weather_data:
+                        with open('/tmp/weather2pwn_data.json', 'w') as f:
+                            json.dump(self.weather_data, f)
+                        logging.info("[Weather2Pwn] Weather data obtained successfully.")
+                    else:
+                        logging.error("[Weather2Pwn] Failed to fetch weather data.")
                 else:
-                    logging.error("[Weather2Pwn] Failed to fetch weather data.")
-                self.last_fetch_time = current_time
+                    logging.error("[Weather2Pwn] GPS coordinates not obtained.")
         else:
             logging.debug("[Weather2Pwn] Internet is available but not fetching weather data this time.")
  
