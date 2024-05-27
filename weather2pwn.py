@@ -3,7 +3,7 @@
 #setup main.plugins.weather2pwn.api_key = "apikey"
 #depends on gpsd and clients installed
  
-import socket, json, requests, logging
+import socket, json, requests, logging, os, toml
 from pwnagotchi.ui.components import LabeledValue
 from pwnagotchi.ui.view import BLACK
 import pwnagotchi.ui.fonts as fonts
@@ -68,6 +68,7 @@ class Weather2Pwn(plugins.Plugin):
                     logging.error("[Weather2Pwn] Failed to fetch weather data.")
             
     def on_loaded(self):
+        self.internet_counter = 0
         self.api_key = self.options.get('api_key', '')
         logging.info("[Weather2Pwn] Plugin loaded.")
 
@@ -91,8 +92,9 @@ class Weather2Pwn(plugins.Plugin):
     def on_internet_available(self, agent):
         logging.debug("[Weather2Pwn] oninternet available")
         self.internet_counter += 1
+        logging.debug(f"[Weather2Pwn] oninternet available counter is {self.internet_counter}")
         if self.internet_counter % 3 == 0:
-            logging.info("[Weather2Pwn] Internet call is officially available.")
+            logging.debug("[Weather2Pwn] Internet call is officially available.")
             latitude, longitude = self.get_gps_coordinates()
             if latitude and longitude:
                 logging.debug(f"[Weather2Pwn] Latitude: {latitude}, Longitude: {longitude}")
@@ -127,3 +129,15 @@ class Weather2Pwn(plugins.Plugin):
                 except KeyError:
                     pass
             logging.info("[Weather2Pwn] Unloaded")
+
+if __name__ == "__main__":
+    config_file = '/etc/pwnagotchi/config.toml'
+    api_key = ''
+    if os.path.exists(config_file):
+        with open(config_file, 'r') as f:
+            config = toml.load(f)
+            if 'main' in config and 'plugins' in config['main'] and 'weather2pwn' in config['main']['plugins']:
+                api_key = config['main']['plugins']['weather2pwn'].get('api_key', '')
+    plugin = Weather2Pwn()
+    plugin.api_key = api_key
+    plugin.on_ready(None)
