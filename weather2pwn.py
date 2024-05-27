@@ -5,7 +5,7 @@
 # also for getbycity set main.plugins.weather2pwn.city_id = "city id on openweathermap.org"
 #depends on gpsd and clients installed
  
-import socket, json, requests, logging, os, toml, time, subprocess
+import socket, json, requests, logging, os, toml, time
 from pwnagotchi.ui.components import LabeledValue
 from pwnagotchi.ui.view import BLACK
 import pwnagotchi.ui.fonts as fonts
@@ -86,8 +86,8 @@ class Weather2Pwn(plugins.Plugin):
                     logging.debug(f"[Weather2Pwn] GPS coordinates obtained: {latitude}, {longitude}")
                     self.weather_data = self.get_weather_by_gps(latitude, longitude, self.api_key)
                     if self.weather_data:
-                        data_str = json.dumps(self.weather_data)
-                        subprocess.run(['sudo', 'bash', '-c', f'echo \'{data_str}\' > /tmp/weather2pwn_data.json'])
+                        with open('/tmp/weather2pwn_data.json', 'w') as f:
+                            json.dump(self.weather_data, f)
                         logging.info("[Weather2Pwn] Weather data obtained successfully.")
                     else:
                         logging.error("[Weather2Pwn] Failed to fetch weather data.")
@@ -217,8 +217,6 @@ class Weather2Pwn(plugins.Plugin):
 if __name__ == "__main__":
     config_file = '/etc/pwnagotchi/config.toml'
     api_key = ''
-    getbycity = 'false'
-    city_id = ''
     if os.path.exists(config_file):
         with open(config_file, 'r') as f:
             config = toml.load(f)
@@ -226,9 +224,6 @@ if __name__ == "__main__":
                 api_key = config['main']['plugins']['weather2pwn'].get('api_key', '')
                 getbycity = config['main']['plugins']['weather2pwn'].get('getbycity', 'false')
                 city_id = config['main']['plugins']['weather2pwn'].get('city_id', '')
-
     plugin = Weather2Pwn()
     plugin.api_key = api_key
-    plugin.getbycity = str(getbycity).lower() == 'true'
-    plugin.city_id = city_id
     plugin.on_ready(None)
