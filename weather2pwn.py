@@ -1,4 +1,3 @@
-
 #goto openweathermap.org and get an api key.
 #setup main.plugins.weather2pwn.api_key = "apikey from openweathermap.org"
 #if you lack a gps or don't want to use itsetup main.plugins.weather2pwn.getbycity = "true"
@@ -47,7 +46,6 @@ class Weather2Pwn(plugins.Plugin):
             gpsd_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             gpsd_socket.connect(('localhost', 2947))
             gpsd_socket.sendall(b'?WATCH={"enable":true,"json":true}')
-
             while True:
                 data = gpsd_socket.recv(4096).decode('utf-8')
                 for line in data.splitlines():
@@ -151,8 +149,8 @@ class Weather2Pwn(plugins.Plugin):
         logging.debug(f"[Weather2Pwn] converted getbycity: {self.getbycity}")
         self.city_id = self.options.get('city_id', '')
         logging.debug(f"[Weather2Pwn] got city_id {self.city_id}")
-        self.last_fetch_time = 1800
-        self.fetch_interval = 1800 
+        self.last_fetch_time = 3600
+        self.fetch_interval = 3600
         logging.info("[Weather2Pwn] Plugin loaded.")
 
     def on_agent(self, agent) -> None:
