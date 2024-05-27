@@ -13,7 +13,7 @@ import pwnagotchi.plugins as plugins
 
 class Weather2Pwn(plugins.Plugin):
     __author__ = 'NeonLightning'
-    __version__ = '1.0.0'
+    __version__ = '1.0.2'
     __license__ = 'GPL3'
     __description__ = 'Weather display from location data'
 
