@@ -19,7 +19,7 @@ class Weather2Pwn(plugins.Plugin):
 
     def _is_internet_available(self):
         try:
-            socket.create_connection(("api.openweathermap.org", 80))
+            socket.create_connection(("www.google.com", 80))
             return True
         except OSError:
             return False
