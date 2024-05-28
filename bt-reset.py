@@ -26,7 +26,7 @@ class BTReset(Plugin):
                 self.was_connected = True
         else:
             time_disconnected = datetime.now() - self.last_connected 
-            remaining_timeout = self.timeout_minutes - int(time_disconnected.total_seconds() // 60)
+            remaining_timeout = self.timeout_minutes - time_disconnected
             logging.info(f"[BT-Reset] No active Bluetooth connections detected. Disconnected for {time_disconnected}. Restarting Pwnagotchi service in {remaining_timeout} minutes.")
             if self.was_connected:
                 logging.info(f"[BT-Reset] Bluetooth has been disconnected.")
