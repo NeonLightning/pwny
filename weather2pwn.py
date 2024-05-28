@@ -35,7 +35,7 @@ class Weather2Pwn(plugins.Plugin):
         except Exception as e:
             logging.error(f"[Weather2Pwn] Exception fetching weather data: {e}")
             return None
-    
+
     def get_gps_coordinates(self):
         try:
             gpsd_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -67,7 +67,7 @@ class Weather2Pwn(plugins.Plugin):
         except Exception as e:
             logging.error(f"[Weather2Pwn] Exception fetching weather data: {e}")
             return None
-        
+
     def on_ready(self, agent):
         if self._is_internet_available():
             if self.getbycity == False:
@@ -84,7 +84,7 @@ class Weather2Pwn(plugins.Plugin):
                     logging.error("[Weather2Pwn] GPS coordinates not obtained.")
             else:
                 self.weather_data = self.get_weather_by_city_id()
-                    
+
     def check_and_update_config(self, key, value):
         config_file = '/etc/pwnagotchi/config.toml'
         try:
@@ -115,9 +115,11 @@ class Weather2Pwn(plugins.Plugin):
         self.internet_counter = 0
         if os.path.exists('/tmp/weather2pwn_data.json'):
             os.remove('/tmp/weather2pwn_data.json')
+        self.check_and_update_config('main.plugins.weather2pwn.fetch_interval', '3600')
         self.check_and_update_config('main.plugins.weather2pwn.api_key', '""')
         self.check_and_update_config('main.plugins.weather2pwn.getbycity', 'false')
         self.check_and_update_config('main.plugins.weather2pwn.cityid', '""')
+        self.fetch_interval = self.options.get('fetch_interval', '3600')
         self.api_key = self.options.get('api_key', '')
         getbycity_option = self.options.get('getbycity', 'false')
         if isinstance(getbycity_option, bool):
@@ -125,13 +127,12 @@ class Weather2Pwn(plugins.Plugin):
         else:
             self.getbycity = getbycity_option.lower() == 'true'
         self.city_id = self.options.get('city_id', '')
-        self.last_fetch_time = 3600
-        self.fetch_interval = 3600
+        self.last_fetch_time = 0
         logging.info("[Weather2Pwn] Plugin loaded.")
 
     def on_agent(self, agent) -> None:
         self.on_internet_available(self, agent)
-        
+
     def on_ui_setup(self, ui):
         pos1 = (150, 37)
         ui.add_element('city', LabeledValue(color=BLACK, label='', value='',
@@ -156,6 +157,7 @@ class Weather2Pwn(plugins.Plugin):
                     if self.weather_data:
                         with open('/tmp/weather2pwn_data.json', 'w') as f:
                             json.dump(self.weather_data, f)
+                        logging.info("[Weather2Pwn] Weather data obtained successfully.")
                     else:
                         logging.error("[Weather2Pwn] Failed to fetch weather data.")
                 else:
@@ -163,7 +165,7 @@ class Weather2Pwn(plugins.Plugin):
             else:
                 self.weather_data = self.get_weather_by_city_id()
             self.last_fetch_time = current_time
- 
+
     def on_ui_update(self, ui):
         if self._is_internet_available():
             if os.path.exists('/tmp/weather2pwn_data.json'):
@@ -179,7 +181,7 @@ class Weather2Pwn(plugins.Plugin):
                 if "weather" in self.weather_data and len(self.weather_data["weather"]) > 0:
                     main_weather = self.weather_data["weather"][0]["main"]
                     ui.set('weather', f"{main_weather}")
-                
+
     def on_unload(self, ui):
         with ui._lock:
             for element in ['city', 'feels_like', 'weather']:
