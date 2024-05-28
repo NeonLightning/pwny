@@ -3,7 +3,7 @@
 #if you lack a gps or don't want to use itsetup main.plugins.weather2pwn.getbycity = "true"
 # also for getbycity set main.plugins.weather2pwn.city_id = "city id on openweathermap.org"
 #depends on gpsd and clients installed
-import socket, json, requests, logging, os, time
+import socket, json, requests, logging, os, time, toml
 from pwnagotchi.ui.components import LabeledValue
 from pwnagotchi.ui.view import BLACK
 import pwnagotchi.ui.fonts as fonts
@@ -77,7 +77,7 @@ class Weather2Pwn(plugins.Plugin):
                     if self.weather_data:
                         with open('/tmp/weather2pwn_data.json', 'w') as f:
                             json.dump(self.weather_data, f)
-                        logging.info("[Weather2Pwn] Weather data obtained successfully.")
+                        logging.info("[Weather2Pwn] Initial weather data obtained successfully.")
                     else:
                         logging.error("[Weather2Pwn] Failed to fetch weather data.")
                 else:
@@ -157,7 +157,7 @@ class Weather2Pwn(plugins.Plugin):
                     if self.weather_data:
                         with open('/tmp/weather2pwn_data.json', 'w') as f:
                             json.dump(self.weather_data, f)
-                        logging.info("[Weather2Pwn] Weather data obtained successfully.")
+                        logging.info(f"[Weather2Pwn] Weather data obtained successfully.")
                     else:
                         logging.error("[Weather2Pwn] Failed to fetch weather data.")
                 else:
@@ -190,3 +190,37 @@ class Weather2Pwn(plugins.Plugin):
                 except KeyError:
                     pass
             logging.info("[Weather2Pwn] Unloaded")
+
+if __name__ == "__main__":
+    config_file = '/etc/pwnagotchi/config.toml'
+    try:
+        with open(config_file, 'r') as f:
+            config = toml.load(f)
+        weather_config = config.get('main', {}).get('plugins', {}).get('weather2pwn', {})
+        api_key = weather_config.get('api_key', '')
+        getbycity = weather_config.get('getbycity', False)
+        city_id = weather_config.get('city_id', '')
+        weather2pwn = Weather2Pwn()
+        weather2pwn.api_key = api_key
+        weather2pwn.getbycity = getbycity
+        weather2pwn.city_id = city_id
+        if weather2pwn._is_internet_available():
+            if getbycity:
+                weather_data = weather2pwn.get_weather_by_city_id()
+            else:
+                latitude, longitude = weather2pwn.get_gps_coordinates()
+                if latitude and longitude:
+                    weather_data = weather2pwn.get_weather_by_gps(latitude, longitude, api_key)
+                else:
+                    logging.error("[Weather2Pwn] GPS coordinates not obtained.")
+                    weather_data = None
+            if weather_data:
+                with open('/tmp/weather2pwn_data.json', 'w') as f:
+                    json.dump(weather_data, f)
+                print("[Weather2Pwn] Weather data obtained successfully.")
+            else:
+                print("[Weather2Pwn] Failed to fetch weather data.")
+        else:
+            print("[Weather2Pwn] No internet connection available.")
+    except Exception as e:
+        print(f"[Weather2Pwn] Exception occurred: {e}")
