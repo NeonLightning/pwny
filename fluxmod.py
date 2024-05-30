@@ -55,7 +55,7 @@ class Fluxmod(plugins.Plugin):
                 invert = self.invert_on_time <= now <= self.invert_off_time
             else:
                 invert = now >= self.invert_on_time or now <= self.invert_off_time
-            logging.info(f'[fluxmod] Inversion status: {invert}')
+            logging.debug(f'[fluxmod] Inversion status: {invert}')
             config_file = '/etc/pwnagotchi/config.toml'
             with open(config_file, 'r') as f:
                 config_lines = f.readlines()
@@ -68,7 +68,7 @@ class Fluxmod(plugins.Plugin):
                         os.system('sudo systemctl restart pwnagotchi')
                         logging.info(f'[fluxmod] Updated ui.invert to {invert}')
                     else:
-                        logging.info('[fluxmod] No change needed for ui.invert')
+                        logging.debug('[fluxmod] No change needed for ui.invert')
                     break
         except Exception as e:
             logging.error(f'[fluxmod] Error updating ui.invert: {e}')
