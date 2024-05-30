@@ -33,6 +33,7 @@ class BTReset(Plugin):
             if not self.was_connected:
                 logging.info("[BT-Reset] Bluetooth is connected. Updating last connected time.")
                 self.was_connected = True
+                self.remaining_timeout = None
         else:
             logging.debug("[BT-Reset] Bluetooth is not connected")
             time_disconnected = datetime.now() - self.last_connected
