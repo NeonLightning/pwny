@@ -2,7 +2,7 @@
 # main.plugins.fluxmod.invert_on_time = "20:00"
 # main.plugins.fluxmod.invert_off_time = "6:00"
 
-import toml, os, threading, logging
+import toml, os, threading, logging, subprocess
 from datetime import datetime, time
 from pwnagotchi import plugins
 
@@ -73,3 +73,25 @@ class Fluxmod(plugins.Plugin):
         except Exception as e:
             logging.error(f'[fluxmod] Error updating ui.invert: {e}')
 
+if __name__ == "__main__":
+    config_file = '/etc/pwnagotchi/config.toml'
+    try:
+        with open(config_file, 'r') as f:
+            config_lines = f.readlines()
+        invert = None
+        for i, line in enumerate(config_lines):
+            if 'ui.invert' in line:
+                invert = 'true' if 'false' in line.lower() else 'false'
+                config_lines[i] = f'ui.invert = {invert}\n'
+                break
+        if invert is None:
+            raise ValueError("ui.invert not found in config file")
+        for i, line in enumerate(config_lines):
+            if 'main.plugins.fluxmod.enabled = true' in line:
+                config_lines[i] = 'main.plugins.fluxmod.enabled = false\n'
+        with subprocess.Popen(['sudo', 'tee', config_file], stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) as proc:
+            proc.stdin.write(''.join(config_lines).encode())
+        os.system('sudo systemctl restart pwnagotchi')
+        print(f"[fluxmod] Toggled ui.invert to {invert}")
+    except Exception as e:
+        print(f"[fluxmod] Error updating config: {e}")
