@@ -23,7 +23,6 @@ class BTReset(Plugin):
             ui.set("bluetooth", tether_status + " *")
         if self.remaining_timeout is not None:
             remaining_seconds = int(self.remaining_timeout)
-            logging.debug(f"Remaining seconds: {remaining_seconds}")
             ui.set("bluetooth", tether_status + " * " + str(remaining_seconds) + "s")
 
     def check_bluetooth_status(self):
@@ -35,11 +34,9 @@ class BTReset(Plugin):
                 self.was_connected = True
                 self.remaining_timeout = None
         else:
-            logging.debug("[BT-Reset] Bluetooth is not connected")
             time_disconnected = datetime.now() - self.last_connected
-            logging.debug(f"[BT-Reset] Bluetooth time disconnected. {time_disconnected}")
+            logging.info(f"[BT-Reset] Bluetooth time disconnected. {time_disconnected}")
             self.remaining_timeout = self.timeout_minutes * 60 - time_disconnected.total_seconds()
-            logging.info(f"[BT-Reset] No active Bluetooth connections detected. Disconnected for {time_disconnected}. Restarting Pwnagotchi service in {self.remaining_timeout} seconds.")
             if self.was_connected:
                 logging.info("[BT-Reset] Bluetooth has been disconnected.")
                 self.was_connected = False
@@ -48,11 +45,11 @@ class BTReset(Plugin):
                 subprocess.run(['sudo', 'systemctl', 'restart', 'pwnagotchi'], check=True)
 
     def on_ready(self, agent):
-        self.timeout_minutes = self.options.get('timeout_minutes', 30)
+        self.timeout_minutes = self.options.get('timeout_minutes', 10)
         self.last_connected = datetime.now()
         self.was_connected = False
         self.selfrunning = True
         logging.info(f"[BT-Reset] plugin loaded with timeout of {self.timeout_minutes} minutes.")
         while self.selfrunning:
             self.check_bluetooth_status()
-            time.sleep(10)
+            time.sleep(30)
