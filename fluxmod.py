@@ -47,8 +47,8 @@ class Fluxmod(plugins.Plugin):
             now = datetime.now().time()
             invert = self.should_invert(now)
             if self.update_config(invert):
-                os.system('sudo systemctl restart pwnagotchi')
                 logging.info(f'[fluxmod] Updated ui.invert to {invert}')
+                os.system('sudo systemctl restart pwnagotchi')
         except Exception as e:
             logging.error(f'[fluxmod] Error updating ui.invert: {e}')
 

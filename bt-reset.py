@@ -17,14 +17,6 @@ class BTReset(Plugin):
         self.selfrunning = False
         logging.info("[BT-Reset] plugin unloaded.")
 
-    def on_ui_update(self, ui):
-        tether_status = ui.get("bluetooth")
-        if tether_status is not None:
-            ui.set("bluetooth", tether_status + " *")
-        if self.remaining_timeout is not None:
-            remaining_seconds = int(self.remaining_timeout)
-            ui.set("bluetooth", tether_status + " * " + str(remaining_seconds) + "s")
-
     def check_bluetooth_status(self):
         result = subprocess.run(['bluetoothctl', 'info'], capture_output=True, text=True)
         if 'Connected: yes' in result.stdout:
