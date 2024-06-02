@@ -54,7 +54,7 @@ TEMPLATE = """
 {% endblock %}
 """
 
-class handshakes:
+class Handshake:
     def __init__(self, name, path, ext):
         self.name = name
         self.path = path
@@ -76,32 +76,58 @@ class Uncracked(plugins.Plugin):
         self.config = config
         self.ready = True
 
-    def on_webhook(self, path, request):
-        if not self.ready:
-            return "Plugin not ready"
-        if path == "/" or not path:
-            with open(os.path.join(self.config['bettercap']['handshakes'], "wpa-sec.cracked.potfile"), 'r') as file_in:
+    def read_potfile(self):
+        potfile_path = os.path.join(self.config['bettercap']['handshakes'], "wpa-sec.cracked.potfile")
+        try:
+            with open(potfile_path, 'r') as file_in:
                 lines = file_in.readlines()
-            lines = [line.strip() for line in lines if line.strip()]
-            unique_lines = set()
-            for line in lines:
-                fields = line.split(":")
-                ssid, bssid = fields[2], fields[0]
-                unique_lines.add((ssid, bssid))
-            data = []
+            return set(line.split(":")[2:4] for line in lines if line.strip())
+        except FileNotFoundError:
+            logging.error("[Uncracked] potfile not found")
+            return set()
+        except Exception as e:
+            logging.error(f"[Uncracked] error reading potfile: {e}")
+            return set()
+
+    def find_uncracked_handshakes(self, unique_lines):
+        handshakes = []
+        try:
             for ext in ['.pcap', '.2500', '.16800', '.22000']:
                 pcapfiles = glob.glob(os.path.join(self.config['bettercap']['handshakes'], f"*{ext}"))
                 for path in pcapfiles:
                     name = os.path.basename(path)[:-len(ext)]
                     fullpathNoExt = path[:-len(ext)]
                     if not any(f"{ssid}_{bssid}" in name for ssid, bssid in unique_lines):
-                        data.append(handshakes(name, fullpathNoExt, [ext]))
-            data.sort(key=lambda x: x.name.lower())
-            return render_template_string(TEMPLATE, title="Handshakes | " + pwnagotchi.name(), handshakes=data)
-        else:
-            dir = self.config['bettercap']['handshakes']
-            try:
+                        handshakes.append(Handshake(name, fullpathNoExt, [ext]))
+            handshakes = sorted(handshakes, key=lambda x: x.name.lower())
+        except Exception as e:
+            logging.error(f"[Uncracked] error finding uncracked handshakes: {e}")
+        return handshakes
+
+    def on_webhook(self, path, request):
+        try:
+            if not self.ready:
+                return "Plugin not ready"
+            if path == "/" or not path:
+                logging.info(f"[Uncracked] Loaded webhook")
+                unique_lines = self.read_potfile()
+                data = self.find_uncracked_handshakes(unique_lines)
+                return render_template_string(TEMPLATE, title="Handshakes | " + pwnagotchi.name(), handshakes=data)
+            else:
                 logging.info(f"[Uncracked] serving {dir}/{path}")
-                return send_from_directory(directory=dir, filename=path, as_attachment=True)
-            except FileNotFoundError:
-                abort(404)
+                return self.serve_file(path)
+        except Exception as e:
+            logging.error(f"[Uncracked] error in webhook: {e}")
+            abort(500)
+
+    def serve_file(self, path):
+        dir = self.config['bettercap']['handshakes']
+        try:
+            logging.info(f"[Uncracked] serving {dir}/{path}")
+            return send_from_directory(directory=dir, path=path, as_attachment=True)
+        except FileNotFoundError:
+            logging.error(f"[Uncracked] file not found: {path}")
+            abort(404)
+        except Exception as e:
+            logging.error(f"[Uncracked] error serving file: {e}")
+            abort(500)
