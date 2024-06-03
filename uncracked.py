@@ -145,7 +145,7 @@ class Uncracked(plugins.Plugin):
         directory_to_compress = self.config['bettercap']['handshakes']
         logging.debug(f"[Uncracked] Compressing and sending {directory_to_compress}")
         zip_suffix = f"_{extension}" if extension else ""
-        zip_file_path = f"/tmp/handshakes_{zip_suffix}.zip"
+        zip_file_path = f"/tmp/handshakes{zip_suffix}.zip"
         logging.info(f"[Uncracked] Compressing and sending {zip_file_path}")
         default_extensions = ['pcap', '22000', '16800']
         extensions = extension.split(',') if extension else default_extensions
