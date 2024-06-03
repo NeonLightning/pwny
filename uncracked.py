@@ -145,7 +145,7 @@ class Uncracked(plugins.Plugin):
         directory_to_compress = self.config['bettercap']['handshakes']
         logging.debug(f"[Uncracked] Compressing and sending {directory_to_compress}")
         zip_suffix = f"_{extension}" if extension else ""
-        zip_file_path = f"/tmp/handshakes{zip_suffix}.zip"
+        zip_file_path = f"/tmp/handshakes_{zip_suffix}.zip"
         logging.info(f"[Uncracked] Compressing and sending {zip_file_path}")
         default_extensions = ['pcap', '22000', '16800']
         extensions = extension.split(',') if extension else default_extensions
@@ -225,7 +225,11 @@ class Uncracked(plugins.Plugin):
         dir = self.config['bettercap']['handshakes']
         try:
             logging.info(f"[Uncracked] serving {dir}/{path}")
-            return send_from_directory(directory=dir, filename=path, as_attachment=True)
+            response = send_from_directory(directory=dir, filename=path, as_attachment=True)
+            response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+            return response
         except FileNotFoundError:
             logging.error(f"[Uncracked] file not found: {path}")
             abort(404)
