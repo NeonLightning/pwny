@@ -53,7 +53,7 @@ class InternetConectionPlugin(plugins.Plugin):
             file.write(response.content)
 
     def on_loaded(self):
-        global invert_status
+        self.invert_status = None
         self.invert()
         if not os.path.exists(self.icon_path):
             logging.info("internet-conection: on icon path not found")
@@ -76,15 +76,15 @@ class InternetConectionPlugin(plugins.Plugin):
             logging.info(f"Error loading {e}")
         ui.add_element('ineticon', components.LabeledValue(color=view.BLACK, label='', value='',
                                                                    position=(195, 100), label_font=fonts.Small, text_font=fonts.Small))
-        invert_status = self.invert()
-        if invert_status == False:
+        self.invert_status = self.invert()
+        if self.invert_status == False:
             if self._is_internet_available():
                 ui.set('connection_status', self.icon_path) 
             else:
                 ui.set('connection_status', self.icon_off_path)
             logging.info("Internet-conection: Screen Invert False")
 
-        elif invert_status == True:
+        elif self.invert_status == True:
             if self._is_internet_available():
                 ui.set('connection_status', self.icon_invert_path) 
             else:
@@ -92,12 +92,12 @@ class InternetConectionPlugin(plugins.Plugin):
             logging.info("Internet-conection: Screen Invert True")
 
     def on_ui_update(self, ui):
-        if invert_status == False:
+        if self.invert_status == False:
             if self._is_internet_available():
                 ui.set('connection_status', self.icon_path) 
             else:
                 ui.set('connection_status', self.icon_off_path)            
-        elif invert_status == True:
+        elif self.invert_status == True:
             if self._is_internet_available():
                 ui.set('connection_status', self.icon_invert_path) 
             else:
