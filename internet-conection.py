@@ -8,25 +8,21 @@ from pwnagotchi import plugins
 from PIL import ImageOps, Image
 
 class InetIcon(pwnagotchi.ui.components.Widget):
-    def __init__(self, value="", position=(225, 101), color=0, png=False):
-        super().__init__(position, color)
+    def __init__(self, xy=(225, 101), value="", invert=False):
+        super().__init__(xy=xy, color=0)
         self.value = value
+        self.invert = invert
 
     def draw(self, canvas, drawer):
-        if self.value is not None:
-            self.image = Image.open(self.value)
-            self.image = self.image.convert('RGBA')
-            self.pixels = self.image.load()
-            for y in range(self.image.size[1]):
-                for x in range(self.image.size[0]):
-                    if self.pixels[x,y][3] < 255:    # check alpha
-                        self.pixels[x,y] = (255, 255, 255, 255)
-            if self.color == 255:
-                self._image = ImageOps.colorize(self.image.convert('L'), black = "white", white = "black")
-            else:
-                self._image = self.image
-            self.image = self._image.convert('1')
-            canvas.paste(self.image, self.xy)   
+        self.image = Image.open(self.value)
+        self.image = self.image.convert('RGBA')
+        if self.invert:
+            r, g, b, a = self.image.split()
+            rgb_image = Image.merge('RGB', (r, g, b))
+            inverted_rgb_image = ImageOps.invert(rgb_image)
+            inverted_r, inverted_g, inverted_b = inverted_rgb_image.split()
+            self.image = Image.merge('RGBA', (inverted_r, inverted_g, inverted_b, a))
+        canvas.paste(self.image, self.xy)
 
 class InternetConectionPlugin(plugins.Plugin):
     __author__ = 'neonlightning'
@@ -44,76 +40,11 @@ class InternetConectionPlugin(plugins.Plugin):
     def __init__(self):
         self.icon_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "internet-conection.png")
         self.icon_off_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "internet-conection-off.png")
-        self.icon_invert_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "internet-conection-invert.png")
-        self.icon_invert_off_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "internet-conection-off-invert.png")
 
     def download_icon(self, url, save_path):
         response = requests.get(url)
         with open(save_path, 'wb') as file:
             file.write(response.content)
-
-    def on_loaded(self):
-        self.invert_status = None
-        self.invert()
-        if not os.path.exists(self.icon_path):
-            logging.info("internet-conection: on icon path not found")
-            self.download_icon("https://raw.githubusercontent.com/NeonLightning/pwny/main/internet-conection.png", self.icon_path)
-        if not os.path.exists(self.icon_off_path):
-            logging.info("internet-conection: off icon path not found")
-            self.download_icon("https://raw.githubusercontent.com/NeonLightning/pwny/main/internet-conection-off.png", self.icon_off_path)
-        if not os.path.exists(self.icon_invert_path):
-            logging.info("internet-conection: on icon path not found")
-            self.download_icon("https://raw.githubusercontent.com/NeonLightning/pwny/main/internet-conection-invert.png", self.icon_invert_path)
-        if not os.path.exists(self.icon_invert_off_path):
-            logging.info("internet-conection: off icon path not found")
-            self.download_icon("https://raw.githubusercontent.com/NeonLightning/pwny/main/internet-conection-off-invert.png", self.icon_invert_off_path)
-        logging.info("Internet Conection Plugin loaded.")
-
-    def on_ui_setup(self, ui):
-        try:
-            ui.add_element('connection_status', InetIcon(value=self.icon_path, png=True)) 
-        except Exception as e:
-            logging.info(f"Error loading {e}")
-        ui.add_element('ineticon', components.LabeledValue(color=view.BLACK, label='', value='',
-                                                                   position=(195, 100), label_font=fonts.Small, text_font=fonts.Small))
-        self.invert_status = self.invert()
-        if self.invert_status == False:
-            if self._is_internet_available():
-                ui.set('connection_status', self.icon_path) 
-            else:
-                ui.set('connection_status', self.icon_off_path)
-            logging.info("Internet-conection: Screen Invert False")
-
-        elif self.invert_status == True:
-            if self._is_internet_available():
-                ui.set('connection_status', self.icon_invert_path) 
-            else:
-                ui.set('connection_status', self.icon_invert_off_path)
-            logging.info("Internet-conection: Screen Invert True")
-
-    def on_ui_update(self, ui):
-        if self.invert_status == False:
-            if self._is_internet_available():
-                ui.set('connection_status', self.icon_path) 
-            else:
-                ui.set('connection_status', self.icon_off_path)            
-        elif self.invert_status == True:
-            if self._is_internet_available():
-                ui.set('connection_status', self.icon_invert_path) 
-            else:
-                ui.set('connection_status', self.icon_invert_off_path)
-
-    def on_unload(self, ui):
-        with ui._lock:
-            try:
-                ui.remove_element('ineticon')
-            except KeyError:
-                pass
-            try:
-                ui.remove_element('connection_status')
-            except KeyError:
-                pass
-        logging.info("Internet Conection Plugin unloaded.")
 
     def _is_internet_available(self):
         try:
@@ -121,13 +52,13 @@ class InternetConectionPlugin(plugins.Plugin):
             return True
         except OSError:
             return False
-
+        
     def invert(self):
         try:
             with open("/etc/pwnagotchi/config.toml", "r") as f:
                 config = f.readlines()
         except FileNotFoundError:
-            logging.warning("Internet-Conection: Config File not found")
+            logging.warning("[Internet Conection] Config File not found")
             return False
         except EOFError:
             pass
@@ -136,10 +67,53 @@ class InternetConectionPlugin(plugins.Plugin):
             line = line.strip('\n')
             if "ui.invert = true" in line or "ui.invert = false" in line or "ui.invert = True" in line or "ui.invert = False" in line or "ui.invert=TRUE" in line or "ui.invert=FALSE" in line:
                 if line.find("ui.invert = true") != -1:
-                    logging.info("Internet-Conection: Screen Invert True")
+                    logging.debug("[Internet Conection] Screen Invert True")
                     return True
                 elif line.find("ui.invert = false") != -1:
-                    logging.info("Internet-Conection: Screen Invert False")
+                    logging.debug("[Internet Conection] Screen Invert False")
                     return False
-        logging.info("Internet-Conection: Screen Invert Error")
+        logging.info("[Internet Conection] Screen Invert Error")
         return False
+    
+    def on_loaded(self):
+        if not os.path.exists(self.icon_path):
+            logging.info("[Internet Conection] on icon path not found")
+            self.download_icon("https://raw.githubusercontent.com/NeonLightning/pwny/main/internet-conection.png", self.icon_path)
+        if not os.path.exists(self.icon_off_path):
+            logging.info("[Internet Conection] off icon path not found")
+            self.download_icon("https://raw.githubusercontent.com/NeonLightning/pwny/main/internet-conection-off.png", self.icon_off_path)
+        logging.info("[Internet Conection] Plugin loaded.")
+
+    def on_ui_setup(self, ui):
+        invert_status = self.invert()
+        if self._is_internet_available():
+            try:
+                ui.add_element('connection_status', InetIcon(xy=(225, 101), value=self.icon_path, invert=invert_status))
+            except Exception as e:
+                logging.info(f"Error loading {e}")
+        else:
+            try:
+                ui.add_element('connection_status', InetIcon(xy=(225, 101), value=self.icon_off_path, invert=invert_status))
+            except Exception as e:
+                logging.info(f"Error loading {e}")
+        ui.add_element('ineticon', components.LabeledValue(color=view.BLACK, label='', value='',
+                                                                   position=(195, 100), label_font=fonts.Small, text_font=fonts.Small))
+
+    def on_ui_update(self, ui):
+        invert_status = self.invert()
+        if self._is_internet_available():
+            ui.set('connection_status', self.icon_path, invert=invert_status)
+        else:
+            ui.set('connection_status', self.icon_off_path, invert=invert_status)
+
+    def on_unload(self, ui):
+        with ui._lock:
+            try:
+                ui.remove_element('connection_status')
+            except KeyError:
+                pass
+            try:
+                ui.remove_element('ineticon')
+            except KeyError:
+                pass
+        logging.info("[Internet Conection] Plugin unloaded.")
