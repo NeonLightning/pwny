@@ -48,7 +48,7 @@ class InternetConectionPlugin(plugins.Plugin):
 
     def _is_internet_available(self):
         try:
-            socket.create_connection(("www.google.com", 80))
+            socket.create_connection(("www.google.com", 80), timeout=0.5)
             return True
         except OSError:
             return False
@@ -72,7 +72,6 @@ class InternetConectionPlugin(plugins.Plugin):
                 elif line.find("ui.invert = false") != -1:
                     logging.debug("[Internet Conection] Screen Invert False")
                     return False
-        logging.info("[Internet Conection] Screen Invert Error")
         return False
     
     def on_loaded(self):
