@@ -10,7 +10,7 @@ import pwnagotchi.ui.fonts as fonts
 import pwnagotchi.plugins as plugins
 class Weather2Pwn(plugins.Plugin):
     __author__ = 'NeonLightning'
-    __version__ = '1.0.3'
+    __version__ = '1.0.4'
     __license__ = 'GPL3'
     __description__ = 'Weather display from location data'
 
@@ -83,7 +83,13 @@ class Weather2Pwn(plugins.Plugin):
                             json.dump(self.weather_data, f)
                         logging.info("[Weather2Pwn] Initial weather data obtained successfully.")
                     else:
-                        logging.error("[Weather2Pwn] Failed to fetch weather data.")
+                        weather_data = weather2pwn.get_weather_by_city_id()
+                        if self.weather_data:
+                            logging.info(f"[Weather2Pwn] Weather data obtained successfully.")
+                        else:
+                            if os.path.exists('/tmp/weather2pwn_data.json'):
+                                os.remove('/tmp/weather2pwn_data.json')
+                            logging.error("[Weather2Pwn] Failed to fetch weather data.")
                 else:
                     logging.error("[Weather2Pwn] GPS coordinates not obtained.")
             else:
@@ -164,9 +170,13 @@ class Weather2Pwn(plugins.Plugin):
                             json.dump(self.weather_data, f)
                         logging.info(f"[Weather2Pwn] Weather data obtained successfully.")
                     else:
-                        if os.path.exists('/tmp/weather2pwn_data.json'):
-                            os.remove('/tmp/weather2pwn_data.json')
-                        logging.error("[Weather2Pwn] Failed to fetch weather data.")
+                        weather_data = weather2pwn.get_weather_by_city_id()
+                        if self.weather_data:
+                            logging.info(f"[Weather2Pwn] Weather data obtained successfully.")
+                        else:
+                            if os.path.exists('/tmp/weather2pwn_data.json'):
+                                os.remove('/tmp/weather2pwn_data.json')
+                            logging.error("[Weather2Pwn] Failed to fetch weather data.")
                 else:
                     if os.path.exists('/tmp/weather2pwn_data.json'):
                         os.remove('/tmp/weather2pwn_data.json')
@@ -227,6 +237,7 @@ if __name__ == "__main__":
                 if latitude and longitude:
                     weather_data = weather2pwn.get_weather_by_gps(latitude, longitude, api_key)
                 else:
+                    weather_data = weather2pwn.get_weather_by_city_id()
                     print("[Weather2Pwn] GPS coordinates not obtained.")
                     weather_data = None
             if weather_data:
