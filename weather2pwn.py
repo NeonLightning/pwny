@@ -31,8 +31,12 @@ class Weather2Pwn(plugins.Plugin):
                 return data
             else:
                 logging.error(f"[Weather2Pwn] Error fetching weather data: {response.status_code}")
+                if os.path.exists('/tmp/weather2pwn_data.json'):
+                    os.remove('/tmp/weather2pwn_data.json')
                 return None
         except Exception as e:
+            if os.path.exists('/tmp/weather2pwn_data.json'):
+                os.remove('/tmp/weather2pwn_data.json')
             logging.error(f"[Weather2Pwn] Exception fetching weather data: {e}")
             return None
 
@@ -160,8 +164,12 @@ class Weather2Pwn(plugins.Plugin):
                             json.dump(self.weather_data, f)
                         logging.info(f"[Weather2Pwn] Weather data obtained successfully.")
                     else:
+                        if os.path.exists('/tmp/weather2pwn_data.json'):
+                            os.remove('/tmp/weather2pwn_data.json')
                         logging.error("[Weather2Pwn] Failed to fetch weather data.")
                 else:
+                    if os.path.exists('/tmp/weather2pwn_data.json'):
+                        os.remove('/tmp/weather2pwn_data.json')
                     logging.error("[Weather2Pwn] GPS coordinates not obtained.")
             else:
                 self.weather_data = self.get_weather_by_city_id()
@@ -226,8 +234,14 @@ if __name__ == "__main__":
                     json.dump(weather_data, f)
                 print("[Weather2Pwn] Weather data obtained successfully.")
             else:
+                if os.path.exists('/tmp/weather2pwn_data.json'):
+                    os.remove('/tmp/weather2pwn_data.json')
                 print("[Weather2Pwn] Failed to fetch weather data.")
         else:
+            if os.path.exists('/tmp/weather2pwn_data.json'):
+                os.remove('/tmp/weather2pwn_data.json')
             print("[Weather2Pwn] No internet connection available.")
     except Exception as e:
+        if os.path.exists('/tmp/weather2pwn_data.json'):
+            os.remove('/tmp/weather2pwn_data.json')
         print(f"[Weather2Pwn] Exception occurred: {e}")
