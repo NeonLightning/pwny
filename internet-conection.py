@@ -26,7 +26,7 @@ class InetIcon(pwnagotchi.ui.components.Widget):
 
 class InternetConectionPlugin(plugins.Plugin):
     __author__ = 'neonlightning'
-    __version__ = '1.0.4'
+    __version__ = '1.0.5'
     __license__ = 'GPL3'
     __description__ = 'A plugin that displays the Internet connection status on the pwnagotchi display.'
     __name__ = 'InternetConectionPlugin'
