@@ -81,9 +81,10 @@ class Weather2Pwn(plugins.Plugin):
                     if self.weather_data:
                         with open('/tmp/weather2pwn_data.json', 'w') as f:
                             json.dump(self.weather_data, f)
+                        self.weather_data["name"] = self.weather_data["name"] + " *GPS*"
                         logging.info("[Weather2Pwn] Initial weather data obtained successfully.")
                     else:
-                        weather_data = weather2pwn.get_weather_by_city_id()
+                        self.weather_data = self.get_weather_by_city_id()
                         if self.weather_data:
                             logging.info(f"[Weather2Pwn] Weather data obtained successfully.")
                         else:
@@ -167,6 +168,7 @@ class Weather2Pwn(plugins.Plugin):
                     self.weather_data = self.get_weather_by_gps(latitude, longitude, self.api_key)
                     if self.weather_data:
                         with open('/tmp/weather2pwn_data.json', 'w') as f:
+                            self.weather_data["name"] = self.weather_data["name"] + " *GPS*"
                             json.dump(self.weather_data, f)
                         logging.info(f"[Weather2Pwn] Weather data obtained successfully.")
                     else:
