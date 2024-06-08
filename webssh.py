@@ -46,7 +46,7 @@ class WebSSHPlugin(plugins.Plugin):
             {% extends "base.html" %}
             {% block content %}
             <div style="display: flex; justify-content: center; align-items: center; height: calc(100vh - 47px);">
-                <iframe src="{{ iframe_src }}" title="WebSSH" id="webssh" style="width:calc(80vw); height:calc(80vh);" ></iframe>
+                <iframe src="{{ iframe_src }}" title="WebSSH" id="webssh" style="width:calc(90vw); height:calc(90vh);" ></iframe>
             </div>
             {% endblock %}
             """
