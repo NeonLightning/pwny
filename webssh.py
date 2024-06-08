@@ -6,7 +6,7 @@ class WebSSHPlugin(plugins.Plugin):
     __author__ = 'Your Name'
     __version__ = '1.0.0'
     __license__ = 'GPL3'
-    __description__ = 'A plugin to run WebSSH based on the client IP address'
+    __description__ = 'A plugin to run WebSSH'
 
     def download_ttyd(self, url, save_path):
         try:
