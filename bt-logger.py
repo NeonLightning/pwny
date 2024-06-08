@@ -11,7 +11,12 @@ class BTLog(plugins.Plugin):
     __description__ = 'Logs and displays a count of bluetooth devices seen.'
 
     def on_loaded(self):
-        self.gps = self.options.get('gps')
+        self._agent = None
+        self._ui = None
+        if self.options.get('gps') is not None:
+            self.gps = self.options.get('gps')
+        else:
+            self.gps = False
         self.check_and_update_config('main.plugins.bt-logger.gps', 'false')
         self.count = 0
         self.interim_file = '/root/.btinterim.log'
@@ -36,8 +41,12 @@ class BTLog(plugins.Plugin):
             except KeyError:
                 pass
         logging.info('[BT-Log] Unloaded')
-
+        
+    def on_ready(self, agent):
+        self._agent = agent
+        
     def on_ui_setup(self, ui):
+        self._ui = ui
         try:
             ui.add_element('bt-log', LabeledValue(color=BLACK, label='BT#:', value='0', position=(0, 80),
                                         label_font=fonts.Small, text_font=fonts.Small))
@@ -115,18 +124,22 @@ class BTLog(plugins.Plugin):
                 if match:
                     mac_address = match.group(1)
                     device_name = match.group(2)
-                    entry = f"{mac_address} {device_name}"
+                    entry = f"{device_name} {mac_address}"
                     if not self.is_duplicate(entry, interim_file):
                         self.count += 1
                         log_entry = f"{entry}"
+                        if self._ui:
+                            self._ui.set("status", "BT Found\n" + str(entry))
                         latitude, longitude = self.get_gps_coordinates()
                         logging.info(f"[BT-Log] {log_entry}")
                         if self.gps == True:
                             if self.get_gps_coordinates() != None:
                                 log_entry = f"{log_entry}: {latitude}, {longitude}\n"
                             else:
+                                log_entry = f"{entry}\n"
                                 pass
                         else:
+                            log_entry = f"{entry}\n"
                             pass
                         log_file.write(log_entry)
                         log_file.flush()
