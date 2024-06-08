@@ -146,6 +146,7 @@ class BTLog(plugins.Plugin):
                         with open(interim_file, 'a') as interim:
                             interim.write(f"{entry}\n")
                             interim.flush()
+                        self.organize_bluetooth_log(output_file)
 
     def is_duplicate(self, entry, interim_file):
         try:
@@ -158,3 +159,17 @@ class BTLog(plugins.Plugin):
             with open(interim_file, 'w'):
                 pass
             return False
+
+    def organize_bluetooth_log(self, output_file):
+        hex_pattern = re.compile(r'^[0-9A-F]{2}-[0-9A-F]{2}-[0-9A-F]{2}-[0-9A-F]{2}-[0-9A-F]{2}-[0-9A-F]{2}$')
+        try:
+            with open(output_file, 'r') as f:
+                lines = f.readlines()
+            matching_lines = [line for line in lines if hex_pattern.search(line.split()[0])]
+            non_matching_lines = [line for line in lines if not hex_pattern.search(line.split()[0])]
+            organized_lines = non_matching_lines + matching_lines
+            with open(output_file, 'w') as f:
+                f.writelines(organized_lines)
+            logging.debug('[BT-Log] Organized bluetooth.log')
+        except Exception as e:
+            logging.error(f"[BT-Log] Error organizing bluetooth.log: {e}")
