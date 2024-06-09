@@ -46,11 +46,8 @@ class hashie(plugins.Plugin):
                             - When access_point data is available (on_handshake), we leverage 
                                 the reported AP name and MAC to complete the hash
                             - The repair is very basic and could certainly be improved!
-                        Todo:
-                          Make it so users dont need hcxpcapngtool (unless it gets added to the base image)
-                              Phase 1: Extract/construct 22000/16800 hashes through tcpdump commands
-                              Phase 2: Extract/construct 22000/16800 hashes entirely in python
-                          Improve the code, a lot
+                          - if plugin has config entry for "starting_scan" set to false then
+                                it won't do the purge on startup.
                         '''
     
     def __init__(self):
@@ -59,10 +56,16 @@ class hashie(plugins.Plugin):
 
     def on_config_changed(self, config):
         handshake_dir = config['bettercap']['handshakes']
-        if 'interval' not in self.options or not (self.status.newer_then_hours(self.options['interval'])):
+        starting_scan = self.options.get('starting_scan', True)
+        logging.debug(f'[hashie] Current options: {self.options}')
+        logging.debug(f'[hashie] starting_scan value: {starting_scan}')
+        if starting_scan:
             logging.info('[hashie] Starting batch conversion of pcap files')
             with self.lock:
                 self._process_stale_pcaps(handshake_dir)
+        else:
+            logging.info('[hashie] Batch conversion not started because starting_scan is set to False')
+
 
     def on_handshake(self, agent, filename, access_point, client_station):
         with self.lock:
@@ -79,6 +82,9 @@ class hashie(plugins.Plugin):
                 handshake_status.append('Created {}.16800 (PMKID) from pcap'.format(name))
             if handshake_status:
                 logging.info(f'[hashie] Good news: {handshake_status}')
+            if not os.path.isfile(fullpathNoExt + '.22000') or not os.path.isfile(fullpathNoExt + '.16800'):
+                logging.debug(f'[hashie] Failed to find {fullpathNoExt}.22000 or {fullpathNoExt}.16800')
+                os.remove(fullpathNoExt + '.pcap')
 
     def _writeEAPOL(self, fullpath):
         fullpathNoExt = fullpath.split('.')[0]
@@ -86,8 +92,6 @@ class hashie(plugins.Plugin):
         result = subprocess.getoutput('hcxpcapngtool -o {}.22000 {} >/dev/null 2>&1'.format(fullpathNoExt,fullpath))
         if os.path.isfile(fullpathNoExt +  '.22000'):
             logging.debug('[hashie] [+] EAPOL Success: {}.22000 created'.format(filename))
-            if not os.path.isfile(fullpathNoExt + '.16800'):
-                os.remove(fullpath)
             return True
         else:
             return False
@@ -98,8 +102,6 @@ class hashie(plugins.Plugin):
         result = subprocess.getoutput('hcxpcapngtool -k {}.16800 {} >/dev/null 2>&1'.format(fullpathNoExt,fullpath))
         if os.path.isfile(fullpathNoExt + '.16800'):
             logging.debug('[hashie] [+] PMKID Success: {}.16800 created'.format(filename))
-            if not os.path.isfile(fullpathNoExt + '.22000'):
-                os.remove(fullpath)
             return True
         else:
             result = subprocess.getoutput('hcxpcapngtool -K {}.16800 {} >/dev/null 2>&1'.format(fullpathNoExt,fullpath))
@@ -109,8 +111,6 @@ class hashie(plugins.Plugin):
                     return False
                 else:
                     logging.debug('[hashie] [+] PMKID Success: {}.16800 repaired'.format(filename))
-                    if not os.path.isfile(fullpathNoExt + '.22000'):
-                        os.remove(fullpath)
                     return True
             else:
                 logging.debug('[hashie] [-] Could not attempt repair of {} as no raw PMKID file was created'.format(filename))
@@ -174,6 +174,8 @@ class hashie(plugins.Plugin):
                 else:
                     failed_jobs.append('16800: ' + pcapFileName)
                     if not os.path.isfile(fullpathNoExt + '.22000'): #if no 16800 AND no 22000
+                        logging.debug(f'[hashie] Failed to find {fullpathNoExt}.22000 or {fullpathNoExt}.16800')
+                        os.remove(fullpathNoExt + '.pcap')
                         lonely_pcaps.append(handshake)
                         logging.debug('[hashie] Batch job: added {} to lonely list'.format(pcapFileName))
             if ((num + 1) % 10 == 0) or (num + 1 == len(handshakes_list)): #report progress every 50, or when done
