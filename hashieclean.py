@@ -78,7 +78,7 @@ class hashie(plugins.Plugin):
             elif self._writePMKID(filename, access_point):
                 handshake_status.append('Created {}.16800 (PMKID) from pcap'.format(name))
             if handshake_status:
-                logging.info('[hashie] Good news:\t' + '\t'.join(handshake_status))
+                logging.info(f'[hashie] Good news: {handshake_status}')
 
     def _writeEAPOL(self, fullpath):
         fullpathNoExt = fullpath.split('.')[0]
