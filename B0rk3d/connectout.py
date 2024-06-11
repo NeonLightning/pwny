@@ -15,7 +15,7 @@ class ConnectOut(plugins.Plugin):
     def on_unfiltered_ap_list(self, agent, access_points):
         potfile_path = "/root/handshakes/wpa-sec.cracked.potfile"
         successful_potfile_path = "/root/handshakes/successful.wpa-sec.cracked.potfile"
-        logging.info("[ConnectOut] Checking if successful potfile exists...")
+        logging.debug("[ConnectOut] Checking if successful potfile exists...")
         if not os.path.exists(successful_potfile_path):
             logging.info("[ConnectOut] Successful potfile does not exist. Creating...")
             open(successful_potfile_path, 'a').close()
@@ -40,7 +40,7 @@ class ConnectOut(plugins.Plugin):
                         processed_ssids.add(ssid)
                         logging.info(f"[ConnectOut] Found processed SSID: {ssid}")
         logging.info("[ConnectOut] Evaluating unfiltered access points...")
-        strongest_signal = -100
+        strongest_signal = -70
         selected_network = None
         try:
             for network in access_points:
@@ -54,34 +54,34 @@ class ConnectOut(plugins.Plugin):
                     continue
                 ssid = network['hostname']
                 rssi = network['rssi']
-                logging.info(f"[ConnectOut] Checking network: {ssid} with signal strength: {rssi}")
+                logging.debug(f"[ConnectOut] Checking network: {ssid} with signal strength: {rssi}")
                 if ssid in cracked_networks:
-                    logging.info(f"[ConnectOut] Network {ssid} is cracked")
+                    logging.debug(f"[ConnectOut] Network {ssid} is cracked")
                     if rssi > strongest_signal:
                         logging.info(f"[ConnectOut] Network {ssid} has stronger signal than {strongest_signal}")
                         if ssid not in processed_ssids:
                             logging.info(f"[ConnectOut] Network {ssid} is not in processed SSIDs")
                             strongest_signal = rssi
-                            selected_network = ssid
-                            logging.info(f"[ConnectOut] Selected network: {ssid} with signal strength: {strongest_signal}")
+                            selected_network = network
+                            logging.debug(f"[ConnectOut] Selected network: {ssid} with signal strength: {strongest_signal}")
             if selected_network is None:
                 logging.info("[ConnectOut] No cracked network with a strong signal found.")
                 return
-            logging.info(f"[ConnectOut] Preparing WPA supplicant configuration for network: {selected_network['ssid']}")
+            logging.info(f"[ConnectOut] Preparing WPA supplicant configuration for network: {selected_network['hostname']}")
             config_content = f'''
             ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
             update_config=1
             country=US
 
             network={{
-                ssid="{selected_network['ssid']}"
-                psk="{cracked_networks[selected_network['ssid']].split(':')[-1]}"
+                ssid="{selected_network['hostname']}"
+                psk="{cracked_networks[selected_network['hostname']].split(':')[-1]}"
             }}
             '''
             config_file = "/etc/wpa_supplicant/wpa_supplicant.conf"
             with open(config_file, 'w+') as f:
                 f.write(config_content)
-            logging.info(f"[ConnectOut] Connecting to {selected_network['ssid']} with password {cracked_networks[selected_network['ssid']].split(':')[-1]}")
+            logging.info(f"[ConnectOut] Connecting to {selected_network['hostname']} with password {cracked_networks[selected_network['hostname']].split(':')[-1]}")
             logging.info("[ConnectOut] Bringing up wlan1 interface...")
             subprocess.run(["ip", "link", "set", "wlan1", "up"])
             logging.info("[ConnectOut] Starting WPA supplicant...")
@@ -93,10 +93,10 @@ class ConnectOut(plugins.Plugin):
             if ping_result.returncode == 0:
                 logging.info("[ConnectOut] Ping to google.com successful")
                 with open(successful_potfile_path, 'a') as f:
-                    f.write(cracked_networks[selected_network['ssid']] + '\n')
+                    f.write(cracked_networks[selected_network['hostname']] + '\n')
             else:
                 logging.info("[ConnectOut] Ping to google.com failed")
             logging.info("[ConnectOut] Killing WPA supplicant process...")
             subprocess.run(["killall", "wpa_supplicant"])
         except Exception as e:
-            logging.error(f"[ConnectOut] Exception occurred: {str(e)}")
+            logging.exception(f"[ConnectOut] Exception occurred: {str(e)}")
