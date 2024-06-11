@@ -12,7 +12,7 @@ class ConnectOut(plugins.Plugin):
     def on_loaded(self):
         logging.info("[ConnectOut] loaded")
 
-    def on_unfiltered_ap_list(self, agent, access_points):
+    def on_wifi_update(self, agent, access_points):
         potfile_path = "/root/handshakes/wpa-sec.cracked.potfile"
         successful_potfile_path = "/root/handshakes/successful.wpa-sec.cracked.potfile"
         logging.debug("[ConnectOut] Checking if successful potfile exists...")
@@ -98,5 +98,6 @@ class ConnectOut(plugins.Plugin):
                 logging.info("[ConnectOut] Ping to google.com failed")
             logging.info("[ConnectOut] Killing WPA supplicant process...")
             subprocess.run(["killall", "wpa_supplicant"])
+            subprocess.run(["ip", "link", "set", "wlan1", "down"])
         except Exception as e:
             logging.exception(f"[ConnectOut] Exception occurred: {str(e)}")
