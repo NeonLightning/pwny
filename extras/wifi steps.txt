@@ -12,3 +12,22 @@ iw dev wlan0 interface add wlan0mon type monitor
 
 sudo nano /boot/config.txt|grep wifi
 dtoverlay=disable-wifi
+
+sudo nano /etc/wpa_supplicant/wpa_supplicant-wlan1.conf
+fill with
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+update_config=1
+country=US
+
+network={
+    ssid="your_ssid"
+    psk="your_psk"
+    key_mgmt=WPA-PSK
+}
+
+sudo ip link set wlan1 up
+sudo wpa_supplicant -B -i wlan1 -c /etc/wpa_supplicant/wpa_supplicant-wlan1.conf
+sudo dhclient wlan1
+
+sudo killall wpa_supplicant
+sudo ip link set wlan1 down
