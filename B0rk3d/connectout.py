@@ -45,13 +45,14 @@ class ConnectOut(plugins.Plugin):
         try:
             for network in access_points:
                 if 'rssi' not in network or 'hostname' not in network:
-                    logging.info(f"[ConnectOut] Skipping network with missing 'rssi' or 'hostname': {network}")
+                    logging.debug(f"[ConnectOut] Skipping network with missing 'rssi' or 'hostname': {network}")
                     continue
-                primary_device_type = network.get('wps', {}).get('Primary Device Type', '')
+                wps_info = network.get('wps', {})
+                primary_device_type = wps_info.get('Primary Device Type', '')
                 if 'AP' not in primary_device_type:
-                    logging.info(f"[ConnectOut] Skipping network without 'AP' in 'Primary Device Type': {network}")
+                    logging.debug(f"[ConnectOut] Skipping network without 'AP' in 'Primary Device Type': {network}")
                     continue
-                ssid = network.get('hostname')
+                ssid = network['hostname']
                 rssi = network['rssi']
                 logging.info(f"[ConnectOut] Checking network: {ssid} with signal strength: {rssi}")
                 if ssid in cracked_networks:
@@ -61,7 +62,7 @@ class ConnectOut(plugins.Plugin):
                         if ssid not in processed_ssids:
                             logging.info(f"[ConnectOut] Network {ssid} is not in processed SSIDs")
                             strongest_signal = rssi
-                            selected_network = network.get('hostname')
+                            selected_network = ssid
                             logging.info(f"[ConnectOut] Selected network: {ssid} with signal strength: {strongest_signal}")
             if selected_network is None:
                 logging.info("[ConnectOut] No cracked network with a strong signal found.")
