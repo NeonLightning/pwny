@@ -31,3 +31,4 @@ sudo dhclient wlan1
 
 sudo killall wpa_supplicant
 sudo ip link set wlan1 down
+sudo ip addr flush dev wlan1
