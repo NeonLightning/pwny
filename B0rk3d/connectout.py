@@ -99,5 +99,6 @@ class ConnectOut(plugins.Plugin):
             logging.info("[ConnectOut] Killing WPA supplicant process...")
             subprocess.run(["killall", "wpa_supplicant"])
             subprocess.run(["ip", "link", "set", "wlan1", "down"])
+            subprocess.run(["ip", "addr", "flush", "dev", "wlan1"]
         except Exception as e:
             logging.exception(f"[ConnectOut] Exception occurred: {str(e)}")
