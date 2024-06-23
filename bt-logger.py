@@ -1,8 +1,9 @@
 import pwnagotchi, logging, re, subprocess, io, socket, json
 import pwnagotchi.plugins as plugins
+import pwnagotchi.ui.fonts as fonts
+from flask import Flask, render_template_string
 from pwnagotchi.ui.components import LabeledValue
 from pwnagotchi.ui.view import BLACK
-import pwnagotchi.ui.fonts as fonts
 
 class BTLog(plugins.Plugin):
     __author__ = 'NeonLightning'
@@ -55,6 +56,49 @@ class BTLog(plugins.Plugin):
             with open(self.output, 'w'):
                 pass
         ui.set('bt-log', str(self.count))
+        
+    def on_webhook(self, path, request):
+        logging.info(f"Received webhook request for path: {path}")
+        log_file_path = '/root/bluetooth.log'
+        devices = []
+        try:
+            with open(log_file_path, 'r') as log_file:
+                for line in log_file:
+                    match = re.match(r'(.+) ([0-9A-F:]+): (-?\d+\.\d+), (-?\d+\.\d+)', line)
+                    if match:
+                        device_name, mac_address, latitude, longitude = match.groups()
+                        devices.append({
+                            'name': device_name,
+                            'mac': mac_address,
+                            'latitude': latitude,
+                            'longitude': longitude
+                        })
+        except FileNotFoundError:
+            logging.error("Bluetooth log file not found")
+            pass
+        template = '''
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta http-equiv="X-UA-Compatible" content="IE=edge">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Bluetooth Devices</title>
+        </head>
+        <body>
+            <h1>Bluetooth Devices</h1>
+            <ul>
+                {% for device in devices %}
+                    <li>
+                        {{ device.name }} - {{ device.mac }} - 
+                        <a href="https://www.google.com/maps/search/?api=1&query={{ device.latitude }},{{ device.longitude }}">View on Google Maps</a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </body>
+        </html>
+        '''
+        return render_template_string(template, devices=devices)
         
     def get_gps_coordinates(self):
         try:
@@ -143,6 +187,8 @@ class BTLog(plugins.Plugin):
                 lines = f.readlines()
             matching_lines = [line for line in lines if hex_pattern.search(line.split()[0])]
             non_matching_lines = [line for line in lines if not hex_pattern.search(line.split()[0])]
+            matching_lines.sort()
+            non_matching_lines.sort()
             organized_lines = non_matching_lines + matching_lines
             with open(output_file, 'w') as f:
                 f.writelines(organized_lines)
