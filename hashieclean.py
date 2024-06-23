@@ -66,7 +66,6 @@ class hashie(plugins.Plugin):
         else:
             logging.info('[hashie] Batch conversion not started because starting_scan is set to False')
 
-
     def on_handshake(self, agent, filename, access_point, client_station):
         with self.lock:
             handshake_status = []
