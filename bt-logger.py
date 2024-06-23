@@ -11,11 +11,9 @@ class BTLog(plugins.Plugin):
     __description__ = 'Logs and displays a count of bluetooth devices seen.'
 
     def on_loaded(self):
-        if self.options.get('gps') is not None:
-            self.gps = self.options.get('gps')
-        else:
-            self.gps = False
-        self.check_and_update_config('main.plugins.bt-logger.gps', 'false')
+        self.gps = self.options.get('gps', False)
+        self.gps_track = self.options.get('gps_track', True)
+        self.id_only = self.options.get('id_only', True)
         self.count = 0
         self.interim_file = '/root/.btinterim.log'
         self.output = '/root/bluetooth.log'
@@ -73,40 +71,17 @@ class BTLog(plugins.Plugin):
                     except json.JSONDecodeError:
                         continue
         except Exception as e:
-            logging.error(f"[Weather2Pwn] Error getting GPS coordinates: {e}")
+            logging.error(f"[BT-Log] Error getting GPS coordinates: {e}")
             return None, None
 
-    def check_and_update_config(self, key, value):
-        config_file = '/etc/pwnagotchi/config.toml'
-        try:
-            with open(config_file, 'r') as f:
-                config_lines = f.readlines()
-            key_found = False
-            insert_index = -1
-            for i, line in enumerate(config_lines):
-                if 'main.plugins.bt-logger.enabled' in line:
-                    key_found = True
-                    insert_index = i + 1
-                    break
-            key_found = False
-            for line in config_lines:
-                if key in line:
-                    key_found = True
-                    break
-            if not key_found:
-                config_lines.insert(insert_index, f"{key} = {value}\n")
-                with open(config_file, 'w') as f:
-                    f.writelines(config_lines)
-                logging.info(f"[BT-Log] Added {key} to the config file with value {value}")
-        except Exception as e:
-            logging.error(f"[BT-Log] Exception occurred while processing config file: {e}")
-            
     def remove_ansi_escape_sequences(self, text):
         ansi_escape = re.compile(r'\x1B[@-_][0-?]*[ -/]*[@-~]|\x1B\[.*?[@-~]|\^A\^B')
         return ansi_escape.sub('', text)
 
     def log_bluetooth_scan(self, output_file, interim_file):
         device_pattern = re.compile(r'NEW.*Device ([0-9A-F:]{17}) (.+)')
+        hex_pattern = re.compile(r'^[0-9A-F]{2}-[0-9A-F]{2}-[0-9A-F]{2}-[0-9A-F]{2}-[0-9A-F]{2}-[0-9A-F]{2}$')
+
         with open(output_file, 'a') as log_file:
             process = subprocess.Popen(['bluetoothctl'], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE, universal_newlines=True)
@@ -119,33 +94,42 @@ class BTLog(plugins.Plugin):
                     mac_address = match.group(1)
                     device_name = match.group(2)
                     entry = f"{device_name} {mac_address}"
-                    if not self.is_duplicate(entry, interim_file):
+                    latitude, longitude = self.get_gps_coordinates()
+                    if not self.is_duplicate(entry, interim_file, latitude, longitude) and (not self.id_only or not hex_pattern.search(device_name)):
                         self.count += 1
                         log_entry = f"{entry}"
-                        latitude, longitude = self.get_gps_coordinates()
                         logging.info(f"[BT-Log] {log_entry}")
-                        if self.gps == True:
-                            if self.get_gps_coordinates() != None:
+                        if self.gps:
+                            if latitude is not None and longitude is not None:
                                 log_entry = f"{log_entry}: {latitude}, {longitude}\n"
                             else:
                                 log_entry = f"{entry}\n"
-                                pass
                         else:
                             log_entry = f"{entry}\n"
-                            pass
                         log_file.write(log_entry)
                         log_file.flush()
                         with open(interim_file, 'a') as interim:
-                            interim.write(f"{entry}\n")
+                            interim.write(f"{entry} {latitude} {longitude}\n")
                             interim.flush()
                         self.organize_bluetooth_log(output_file)
 
-    def is_duplicate(self, entry, interim_file):
+    def is_duplicate(self, entry, interim_file, latitude, longitude):
         try:
             with open(interim_file, 'r') as interim:
                 for line in interim:
-                    if line.strip() == entry:
-                        return True
+                    logged_entry, logged_latitude, logged_longitude = line.rsplit(' ', 2)
+                    if logged_entry == entry:
+                        try:
+                            logged_latitude = float(logged_latitude)
+                            logged_longitude = float(logged_longitude)
+                            if latitude is None and longitude is None:
+                                if logged_latitude == 0 and logged_longitude == 0:
+                                    return True
+                            else:
+                                if abs(logged_latitude - latitude) < 0.001 and abs(logged_longitude - longitude) < 0.001:
+                                    return True
+                        except ValueError:
+                            continue
             return False
         except FileNotFoundError:
             with open(interim_file, 'w'):
