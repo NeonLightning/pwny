@@ -77,26 +77,52 @@ class BTLog(plugins.Plugin):
             logging.error("Bluetooth log file not found")
             pass
         template = '''
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta http-equiv="X-UA-Compatible" content="IE=edge">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Bluetooth Devices</title>
-        </head>
-        <body>
-            <h1>Bluetooth Devices</h1>
-            <ul>
-                {% for device in devices %}
-                    <li>
-                        {{ device.name }} - {{ device.mac }} - 
-                        <a href="https://www.google.com/maps/search/?api=1&query={{ device.latitude }},{{ device.longitude }}">View on Google Maps</a>
-                    </li>
-                {% endfor %}
-            </ul>
-        </body>
-        </html>
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta http-equiv="X-UA-Compatible" content="IE=edge">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Bluetooth Devices</title>
+                <style>
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                    }
+                    th, td {
+                        border: 1px solid black;
+                        padding: 8px;
+                        text-align: left;
+                    }
+                    th {
+                        background-color: #f2f2f2;
+                    }
+                </style>
+            </head>
+            <body>
+                <h1>Bluetooth Devices</h1>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>MAC Address</th>
+                            <th>Google Maps</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for device in devices %}
+                            <tr>
+                                <td>{{ device.name }}</td>
+                                <td>{{ device.mac }}</td>
+                                <td>
+                                    <a href="https://www.google.com/maps/search/?api=1&query={{ device.latitude }},{{ device.longitude }}">{{ device.latitude }} {{ device.longitude }}</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </body>
+            </html>
         '''
         return render_template_string(template, devices=devices)
         
@@ -170,7 +196,7 @@ class BTLog(plugins.Plugin):
                                 if logged_latitude == 0 and logged_longitude == 0:
                                     return True
                             else:
-                                if abs(logged_latitude - latitude) < 0.001 and abs(logged_longitude - longitude) < 0.001:
+                                if abs(logged_latitude - latitude) < 0.005 and abs(logged_longitude - longitude) < 0.005:
                                     return True
                         except ValueError:
                             continue
