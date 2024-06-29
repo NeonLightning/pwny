@@ -21,6 +21,7 @@ class Weather2Pwn(plugins.Plugin):
         self.check_and_update_config('main.plugins.weather2pwn.getbycity', 'false')
         self.check_and_update_config('main.plugins.weather2pwn.cityid', '""')
         self.check_and_update_config('main.plugins.weather2pwn.gps', '"/dev/ttyUSB0"')
+        self.check_and_update_config('main.plugins.weather2pwn.log', 'false')
         try:
             with open(self.config_path, 'r') as f:
                 config = toml.load(f)
@@ -33,13 +34,18 @@ class Weather2Pwn(plugins.Plugin):
                     self.getbycity = False
                 self.city_id = config['main']['plugins']['weather2pwn']['cityid']
                 self.gps_device = config['main']['plugins']['weather2pwn']['gps']
+                self.weather_log = config['main']['plugins']['weather2pwn']['log']
+                if self.logging == 'true':
+                    self.weather_log = True
+                else:
+                    self.weather_log = False
         except Exception as e:
             self.fetch_interval = '3600'
             self.getbycity = False
             logging.error(f'[Weather2Pwn] Error loading configuration: {e}')
         self.logged_lat = 0
         self.logged_long = 0
-        self.last_fetch_time = 1680
+        self.last_fetch_time = 0
         self.weather_data = None
 
     def _is_internet_available(self):
@@ -139,6 +145,15 @@ class Weather2Pwn(plugins.Plugin):
         except Exception as e:
             logging.error(f"[Weather2Pwn] Exception occurred while processing config file: {e}")
 
+    def store_weather_data(self):
+        file_path = '/root/weather2pwn_data.json'
+        try:
+            with open(file_path, 'a') as f:
+                f.write(json.dumps(self.weather_data) + '\n')
+            logging.info("[Weather2Pwn] Weather data stored successfully.")
+        except Exception as e:
+            logging.error(f"[Weather2Pwn] Error storing weather data: {e}")
+
     def on_loaded(self):
         logging.info("[Weather2Pwn] loading")
         if os.path.exists('/tmp/weather2pwn_data.json'):
@@ -171,9 +186,14 @@ class Weather2Pwn(plugins.Plugin):
                         logging.info("[Weather2Pwn] weather setup by gps initially")
                     else:
                         self.weather_data = self.get_weather_by_city_id()
+                        self.logged_lat, self.logged_long = 0, 0
+                        latitude, longitude = 0, 0
                         logging.info("[Weather2Pwn] weather setup by city initially")
                 else:
                     self.weather_data = self.get_weather_by_city_id()
+                    self.logged_lat = 0
+                    self.logged_long = 0
+                    latitude, longitude = 0, 0
                 if os.path.exists('/tmp/weather2pwn_data.json'):
                     with open('/tmp/weather2pwn_data.json', 'r') as f:
                         self.weather_data = json.load(f)
@@ -187,6 +207,7 @@ class Weather2Pwn(plugins.Plugin):
                     if "weather" in self.weather_data and len(self.weather_data["weather"]) > 0:
                         main_weather = self.weather_data["weather"][0]["main"]
                         ui.set('weather', f"{main_weather}")
+                    self.store_weather_data()
             except Exception as e:
                 logging.exception(f"[Weather2pwn] An error occurred {e}")
                 logging.exception(f"[Weather2pwn] An error occurred2 {self.weather_data}")
@@ -217,6 +238,7 @@ class Weather2Pwn(plugins.Plugin):
                                 self.weather_data["name"] = self.weather_data["name"] + " *GPS*"
                                 json.dump(self.weather_data, f)
                             self.logged_lat, self.logged_long = latitude, longitude
+                            self.store_weather_data()
                             logging.info(f"[Weather2Pwn] GPS Weather data obtained successfully.")
                         else:
                             self.weather_data = self.get_weather_by_city_id()
@@ -226,21 +248,22 @@ class Weather2Pwn(plugins.Plugin):
                                 if os.path.exists('/tmp/weather2pwn_data.json'):
                                     os.remove('/tmp/weather2pwn_data.json')
                                 logging.error("[Weather2Pwn] Failed to fetch weather data.")
-                            self.logged_lat = 0
-                            self.logged_long = 0
+                            self.logged_lat, self.logged_long = 0, 0
+                            longitude, latitude = 0, 0
+                            self.store_weather_data()
                     else:
                         if os.path.exists('/tmp/weather2pwn_data.json'):
                             os.remove('/tmp/weather2pwn_data.json')
-                        self.logged_lat = 0
-                        self.logged_long = 0
+                        self.logged_lat, self.logged_long = 0, 0
                         logging.error("[Weather2Pwn] GPS coordinates not obtained.")
                 except Exception as e:
                     logging.exception(f"[Weather2Pwn] error setting weather on internet {e}")
             else:
                 self.weather_data = self.get_weather_by_city_id()
                 if self.weather_data:
-                    self.logged_lat = 0
-                    self.logged_long = 0
+                    self.logged_lat, self.logged_long = 0, 0
+                    longitude, latitude = 0, 0
+                    self.store_weather_data()
                     logging.info(f"[Weather2Pwn] City Weather data obtained successfully.")
                 else:
                     if os.path.exists('/tmp/weather2pwn_data.json'):
@@ -278,43 +301,3 @@ class Weather2Pwn(plugins.Plugin):
                 except KeyError:
                     pass
             logging.info("[Weather2Pwn] Unloaded")
-
-if __name__ == "__main__":
-    config_file = '/etc/pwnagotchi/config.toml'
-    try:
-        with open(config_file, 'r') as f:
-            config = toml.load(f)
-        weather_config = config.get('main', {}).get('plugins', {}).get('weather2pwn', {})
-        api_key = weather_config.get('api_key', '')
-        getbycity = weather_config.get('getbycity', False)
-        city_id = weather_config.get('city_id', '')
-        weather2pwn = Weather2Pwn()
-        weather2pwn.api_key = api_key
-        weather2pwn.getbycity = getbycity
-        weather2pwn.city_id = city_id
-        if weather2pwn._is_internet_available():
-            if getbycity:
-                weather_data = weather2pwn.get_weather_by_city_id()
-            else:
-                latitude, longitude = weather2pwn.get_gps_coordinates()
-                if latitude and longitude:
-                    weather_data = weather2pwn.get_weather_by_gps(latitude, longitude, api_key)
-                else:
-                    weather_data = weather2pwn.get_weather_by_city_id()
-                    print("[Weather2Pwn] GPS coordinates not obtained.")
-            if weather_data:
-                with open('/tmp/weather2pwn_data.json', 'w') as f:
-                    json.dump(weather_data, f)
-                print("[Weather2Pwn] Weather data obtained successfully.")
-            else:
-                if os.path.exists('/tmp/weather2pwn_data.json'):
-                    os.remove('/tmp/weather2pwn_data.json')
-                print("[Weather2Pwn] Failed to fetch weather data.")
-        else:
-            if os.path.exists('/tmp/weather2pwn_data.json'):
-                os.remove('/tmp/weather2pwn_data.json')
-            print("[Weather2Pwn] No internet connection available.")
-    except Exception as e:
-        if os.path.exists('/tmp/weather2pwn_data.json'):
-            os.remove('/tmp/weather2pwn_data.json')
-        print(f"[Weather2Pwn] Exception occurred: {e}")
