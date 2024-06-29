@@ -3,7 +3,7 @@
 #if you lack a gps or don't want to use itsetup main.plugins.weather2pwn.getbycity = "true"
 # also for getbycity set main.plugins.weather2pwn.city_id = "city id on openweathermap.org"
 #depends on gpsd and clients installed
-import socket, json, requests, logging, os, time, toml, subprocess
+import socket, json, requests, logging, os, time, toml, subprocess, datetime
 from pwnagotchi.ui.components import LabeledValue
 from pwnagotchi.ui.view import BLACK
 import pwnagotchi.ui.fonts as fonts
@@ -43,8 +43,7 @@ class Weather2Pwn(plugins.Plugin):
             self.fetch_interval = '3600'
             self.getbycity = False
             logging.error(f'[Weather2Pwn] Error loading configuration: {e}')
-        self.logged_lat = 0
-        self.logged_long = 0
+        self.logged_lat, self.logged_long = 0, 0
         self.last_fetch_time = 0
         self.weather_data = None
 
@@ -146,8 +145,11 @@ class Weather2Pwn(plugins.Plugin):
             logging.error(f"[Weather2Pwn] Exception occurred while processing config file: {e}")
 
     def store_weather_data(self):
-        file_path = '/root/weather2pwn_data.json'
+        current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+        directory = "/root/weather/"
+        file_path = f'/root/weather/weather2pwn_data_{current_date}.json'
         try:
+            os.makedirs(directory, exist_ok=True)
             with open(file_path, 'a') as f:
                 f.write(json.dumps(self.weather_data) + '\n')
             logging.info("[Weather2Pwn] Weather data stored successfully.")
@@ -191,8 +193,7 @@ class Weather2Pwn(plugins.Plugin):
                         logging.info("[Weather2Pwn] weather setup by city initially")
                 else:
                     self.weather_data = self.get_weather_by_city_id()
-                    self.logged_lat = 0
-                    self.logged_long = 0
+                    self.logged_lat, self.logged_long = 0, 0
                     latitude, longitude = 0, 0
                 if os.path.exists('/tmp/weather2pwn_data.json'):
                     with open('/tmp/weather2pwn_data.json', 'r') as f:
