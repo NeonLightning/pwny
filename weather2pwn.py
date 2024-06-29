@@ -145,16 +145,19 @@ class Weather2Pwn(plugins.Plugin):
             logging.error(f"[Weather2Pwn] Exception occurred while processing config file: {e}")
 
     def store_weather_data(self):
-        current_date = datetime.datetime.now().strftime("%Y-%m-%d")
-        directory = "/root/weather/"
-        file_path = f'/root/weather/weather2pwn_data_{current_date}.json'
-        try:
-            os.makedirs(directory, exist_ok=True)
-            with open(file_path, 'a') as f:
-                f.write(json.dumps(self.weather_data) + '\n')
-            logging.info("[Weather2Pwn] Weather data stored successfully.")
-        except Exception as e:
-            logging.error(f"[Weather2Pwn] Error storing weather data: {e}")
+        if self.weather_log == True:
+            current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+            directory = "/root/weather/"
+            file_path = f'/root/weather/weather2pwn_data_{current_date}.json'
+            try:
+                os.makedirs(directory, exist_ok=True)
+                with open(file_path, 'a') as f:
+                    f.write(json.dumps(self.weather_data) + '\n')
+                logging.info("[Weather2Pwn] Weather data stored successfully.")
+            except Exception as e:
+                logging.error(f"[Weather2Pwn] Error storing weather data: {e}")
+        else:
+            pass
 
     def on_loaded(self):
         logging.info("[Weather2Pwn] loading")
