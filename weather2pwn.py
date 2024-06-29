@@ -204,6 +204,8 @@ class Weather2Pwn(plugins.Plugin):
             if self.getbycity == False:
                 if abs(self.logged_lat - latitude) < 0.005 or abs(self.logged_long - longitude) < 0.005:
                     logging.info("[Weather2Pwn] moved past previous location")
+                    logging.info(f"[Weather2Pwn] location {latitude} {longitude}")
+                    logging.info(f"[Weather2Pwn] prevlocation {self.logged_lat} {self.logged_long}")
                 else:
                     logging.info("[Weather2Pwn] moved past timeout")
                 logging.info('[Weather2Pwn] getbycity false on Internet')
@@ -214,6 +216,7 @@ class Weather2Pwn(plugins.Plugin):
                             with open('/tmp/weather2pwn_data.json', 'w') as f:
                                 self.weather_data["name"] = self.weather_data["name"] + " *GPS*"
                                 json.dump(self.weather_data, f)
+                            self.logged_lat, self.logged_long = latitude, longitude
                             logging.info(f"[Weather2Pwn] GPS Weather data obtained successfully.")
                         else:
                             self.weather_data = self.get_weather_by_city_id()
@@ -225,7 +228,6 @@ class Weather2Pwn(plugins.Plugin):
                                 logging.error("[Weather2Pwn] Failed to fetch weather data.")
                             self.logged_lat = 0
                             self.logged_long = 0
-                        self.logged_lat, self.logged_long = self.get_gps_coordinates()
                     else:
                         if os.path.exists('/tmp/weather2pwn_data.json'):
                             os.remove('/tmp/weather2pwn_data.json')
