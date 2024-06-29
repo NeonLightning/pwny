@@ -200,9 +200,9 @@ class Weather2Pwn(plugins.Plugin):
     def on_internet_available(self, agent):
         current_time = time.time()
         latitude, longitude = self.get_gps_coordinates()
-        if current_time - self.last_fetch_time >= self.fetch_interval or abs(self.logged_lat - latitude) < 0.05 or abs(self.logged_long - longitude) < 0.05:
+        if current_time - self.last_fetch_time >= self.fetch_interval or abs(self.logged_lat - latitude) > 0.005 or abs(self.logged_long - longitude) > 0.005:
             if self.getbycity == False:
-                if abs(self.logged_lat - latitude) < 0.05 or abs(self.logged_long - longitude) < 0.05:
+                if abs(self.logged_lat - latitude) > 0.005 or abs(self.logged_long - longitude) > 0.005:
                     logging.info("[Weather2Pwn] moved past previous location")
                     logging.info(f"[Weather2Pwn] location {latitude} {longitude}")
                     logging.info(f"[Weather2Pwn] prevlocation {self.logged_lat} {self.logged_long}")
