@@ -41,10 +41,7 @@ class Weather2Pwn(plugins.Plugin):
                 self.weather_log = self.weather_log in [True, 'true', 'True']
                 self.language = config['main']['lang']
         except Exception as e:
-            self.fetch_interval = '3600'
-            self.getbycity = False
-            self.weather_log = False
-            logging.error(f'[Weather2Pwn] Error loading configuration: {e}')
+            logging.exception(f'[Weather2Pwn] Error loading configuration: {e}')
         file_path = f'/root/weather/weather2pwn_tmp_data.json'
         if os.path.exists(file_path):
             with open(file_path, 'r') as f:
@@ -80,7 +77,7 @@ class Weather2Pwn(plugins.Plugin):
                 subprocess.run(['sudo', 'gpsd', self.gps_device, '-F', '/var/run/gpsd.sock'])
                 time.sleep(2)
         except Exception as e:
-            logging.error(f"[Weather2Pwn] Error ensuring gpsd is running: {e}")
+            logging.exception(f"[Weather2Pwn] Error ensuring gpsd is running: {e}")
             return False
         return True
 
@@ -120,7 +117,7 @@ class Weather2Pwn(plugins.Plugin):
                     except json.JSONDecodeError:
                         continue
         except Exception as e:
-            logging.error(f"[Weather2Pwn] Error getting GPS coordinates: {e}")
+            logging.exception(f"[Weather2Pwn] Error getting GPS coordinates: {e}")
             return 0, 0
 
     def get_weather_by_gps(self, lat, lon, api_key, lang):
@@ -134,7 +131,7 @@ class Weather2Pwn(plugins.Plugin):
                 logging.error(f"[Weather2Pwn] Error fetching weather data: {response.status_code}")
                 return None
         except Exception as e:
-            logging.error(f"[Weather2Pwn] Exception fetching weather data: {e}")
+            logging.exception(f"[Weather2Pwn] Exception fetching weather data: {e}")
             return None
 
     def check_and_update_config(self, key, value):
@@ -160,7 +157,7 @@ class Weather2Pwn(plugins.Plugin):
                     f.writelines(config_lines)
                 logging.info(f"[Weather2Pwn] Added {key} to the config file with value {value}")
         except Exception as e:
-            logging.error(f"[Weather2Pwn] Exception occurred while processing config file: {e}")
+            logging.exception(f"[Weather2Pwn] Exception occurred while processing config file: {e}")
 
     def store_weather_data(self):
         logging.debug(f"[Weather2Pwn] logging {self.weather_log}")
@@ -185,14 +182,14 @@ class Weather2Pwn(plugins.Plugin):
                     f.write(json.dumps(data_to_store) + '\n')
                 logging.info("[Weather2Pwn] Weather data stored successfully.")
             except Exception as e:
-                logging.error(f"[Weather2Pwn] Error storing weather data: {e}")
+                logging.exception(f"[Weather2Pwn] Error storing weather data: {e}")
             try:
                 os.makedirs(directory, exist_ok=True)
                 with open(tmp_file_path, 'w+') as f:
                     f.write(json.dumps(tmp_data) + '\n')
                 logging.debug("[Weather2Pwn] Weather data location stored successfully.")
             except Exception as e:
-                logging.error(f"[Weather2Pwn] Error storing weather data location: {e}")
+                logging.exception(f"[Weather2Pwn] Error storing weather data location: {e}")
         else:
             pass
 
