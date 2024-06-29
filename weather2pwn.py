@@ -6,6 +6,7 @@
 #main.plugins.weather2pwn.getbycity = false
 #main.plugins.weather2pwn.api_key = "API_KEY"
 #main.plugins.weather2pwn.gps = "/dev/ttyACM0"
+#main.plugins.weather2pwn.log = False
 
 import socket, json, requests, logging, os, time, toml, subprocess, datetime
 from pwnagotchi.ui.components import LabeledValue
@@ -60,6 +61,7 @@ class Weather2Pwn(plugins.Plugin):
         else:
             self.logged_lat, self.logged_long = 0, 0
         self.last_fetch_time = 0
+        self.inetcount = 0
         self.weather_data = {}
         self.current_date = datetime.datetime.now().strftime("%Y-%m-%d")
 
@@ -290,7 +292,10 @@ class Weather2Pwn(plugins.Plugin):
                                 logging.error("[Weather2Pwn] Failed to fetch weather data.")
                             self.logged_lat, self.logged_long = 0, 0
                             longitude, latitude = 0, 0
-                            self.store_weather_data()
+                            if abs(self.logged_lat - latitude) > 0.005 or abs(self.logged_long - longitude) > 0.005 or self.inetcount == 2:
+                                self.store_weather_data()
+                                self.inetcount = 0
+                            self.inetcount += 1
                     else:
                         if os.path.exists('/tmp/weather2pwn_data.json'):
                             os.remove('/tmp/weather2pwn_data.json')
@@ -303,7 +308,10 @@ class Weather2Pwn(plugins.Plugin):
                 if self.weather_data:
                     self.logged_lat, self.logged_long = 0, 0
                     longitude, latitude = 0, 0
-                    self.store_weather_data()
+                    if self.inetcountry == 2:
+                        self.store_weather_data()
+                        self.inetcount = 0
+                    self.inetcount += 1
                     logging.info(f"[Weather2Pwn] City Weather data obtained successfully.")
                 else:
                     if os.path.exists('/tmp/weather2pwn_data.json'):
