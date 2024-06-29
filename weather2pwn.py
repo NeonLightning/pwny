@@ -272,7 +272,7 @@ class Weather2Pwn(plugins.Plugin):
                 logging.debug('[Weather2Pwn] getbycity false on Internet')
                 try:
                     if latitude and longitude:
-                        self.weather_data = self.get_weather_by_gps(latitude, longitude, self.api_key)
+                        self.weather_data = self.get_weather_by_gps(latitude, longitude, self.api_key, self.language)
                         if self.weather_data:
                             with open('/tmp/weather2pwn_data.json', 'w') as f:
                                 self.weather_data["name"] = self.weather_data["name"] + " *GPS*"
