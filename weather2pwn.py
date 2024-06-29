@@ -2,7 +2,7 @@
 #main.plugins.weather2pwn.enabled = true
 #main.plugins.weather2pwn.log = False
 #main.plugins.weather2pwn.fetch_interval = 3600
-#main.plugins.weather2pwn.cityid = "CITYID"
+#main.plugins.weather2pwn.cityid = "CITY_ID"
 #main.plugins.weather2pwn.getbycity = false
 #main.plugins.weather2pwn.api_key = "API_KEY"
 #main.plugins.weather2pwn.gps = "/dev/ttyACM0"
