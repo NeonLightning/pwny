@@ -1,8 +1,12 @@
-#goto openweathermap.org and get an api key.
-#setup main.plugins.weather2pwn.api_key = "apikey from openweathermap.org"
-#if you lack a gps or don't want to use itsetup main.plugins.weather2pwn.getbycity = "true"
-# also for getbycity set main.plugins.weather2pwn.city_id = "city id on openweathermap.org"
-#depends on gpsd and clients installed
+#goto openweathermap.org and get an api key and cityid.
+#main.plugins.weather2pwn.enabled = true
+#main.plugins.weather2pwn.log = False
+#main.plugins.weather2pwn.fetch_interval = 3600
+#main.plugins.weather2pwn.cityid = "CITYID"
+#main.plugins.weather2pwn.getbycity = false
+#main.plugins.weather2pwn.api_key = "API_KEY"
+#main.plugins.weather2pwn.gps = "/dev/ttyACM0"
+
 import socket, json, requests, logging, os, time, toml, subprocess, datetime
 from pwnagotchi.ui.components import LabeledValue
 from pwnagotchi.ui.view import BLACK
@@ -28,24 +32,20 @@ class Weather2Pwn(plugins.Plugin):
                 self.fetch_interval = config['main']['plugins']['weather2pwn']['fetch_interval']
                 self.api_key = config['main']['plugins']['weather2pwn']['api_key']
                 self.getbycity = config['main']['plugins']['weather2pwn']['getbycity']
-                if self.getbycity == 'true':
-                    self.getbycity = True
-                else:
-                    self.getbycity = False
+                self.getbycity = self.getbycity in [True, 'true', 'True']
                 self.city_id = config['main']['plugins']['weather2pwn']['cityid']
                 self.gps_device = config['main']['plugins']['weather2pwn']['gps']
                 self.weather_log = config['main']['plugins']['weather2pwn']['log']
-                if self.logging == 'true':
-                    self.weather_log = True
-                else:
-                    self.weather_log = False
+                self.weather_log = self.weather_log in [True, 'true', 'True']
         except Exception as e:
             self.fetch_interval = '3600'
             self.getbycity = False
+            self.weather_log = False
             logging.error(f'[Weather2Pwn] Error loading configuration: {e}')
         self.logged_lat, self.logged_long = 0, 0
         self.last_fetch_time = 0
         self.weather_data = {}
+        self.current_date = datetime.datetime.now().strftime("%Y-%m-%d")
 
     def _is_internet_available(self):
         try:
@@ -145,14 +145,20 @@ class Weather2Pwn(plugins.Plugin):
             logging.error(f"[Weather2Pwn] Exception occurred while processing config file: {e}")
 
     def store_weather_data(self):
+        logging.debug(f"[Weather2Pwn] logging {self.weather_log}")
         if self.weather_log == True:
-            current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+            self.current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+            file_path = f'/root/weather/weather2pwn_data_{self.current_date}.json'
             directory = "/root/weather/"
-            file_path = f'/root/weather/weather2pwn_data_{current_date}.json'
+            logging.info(f"[Weather2Pwn] Logging to {file_path}")
+            data_to_store = {
+                "time": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "weather_data": self.weather_data
+            }
             try:
                 os.makedirs(directory, exist_ok=True)
                 with open(file_path, 'a') as f:
-                    f.write(json.dumps(self.weather_data) + '\n')
+                    f.write(json.dumps(data_to_store) + '\n')
                 logging.info("[Weather2Pwn] Weather data stored successfully.")
             except Exception as e:
                 logging.error(f"[Weather2Pwn] Error storing weather data: {e}")
@@ -164,6 +170,7 @@ class Weather2Pwn(plugins.Plugin):
         if os.path.exists('/tmp/weather2pwn_data.json'):
             os.remove('/tmp/weather2pwn_data.json')
         logging.info("[Weather2Pwn] Plugin loaded.")
+        logging.debug(f"[Weather2Pwn] getbycity {self.getbycity}")
 
     def on_agent(self, agent) -> None:
         self.on_internet_available(self, agent)
