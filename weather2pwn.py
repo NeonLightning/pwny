@@ -12,6 +12,7 @@ from pwnagotchi.ui.components import LabeledValue
 from pwnagotchi.ui.view import BLACK
 import pwnagotchi.ui.fonts as fonts
 import pwnagotchi.plugins as plugins
+
 class Weather2Pwn(plugins.Plugin):
     __author__ = 'NeonLightning'
     __version__ = '1.0.5'
@@ -37,12 +38,27 @@ class Weather2Pwn(plugins.Plugin):
                 self.gps_device = config['main']['plugins']['weather2pwn']['gps']
                 self.weather_log = config['main']['plugins']['weather2pwn']['log']
                 self.weather_log = self.weather_log in [True, 'true', 'True']
+                self.language = config['main']['lang']
         except Exception as e:
             self.fetch_interval = '3600'
             self.getbycity = False
             self.weather_log = False
             logging.error(f'[Weather2Pwn] Error loading configuration: {e}')
-        self.logged_lat, self.logged_long = 0, 0
+        file_path = f'/root/weather/weather2pwn_tmp_data.json'
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as f:
+                for line in f:
+                    data = json.loads(line)
+                    data_time = datetime.datetime.strptime(data['time'], "%Y-%m-%d %H:%M")
+                    current_time = datetime.datetime.now()
+                    time_diff = current_time - data_time
+                    if abs(time_diff.total_seconds()) == 3600:
+                        self.logged_long = data['lon']
+                        self.logged_lat = data['lat']
+                    else:
+                        self.logged_lat, self.logged_long = 0, 0
+        else:
+            self.logged_lat, self.logged_long = 0, 0
         self.last_fetch_time = 0
         self.weather_data = {}
         self.current_date = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -66,7 +82,7 @@ class Weather2Pwn(plugins.Plugin):
             return False
         return True
 
-    def get_weather_by_city_id(self, lang="en"):
+    def get_weather_by_city_id(self, lang):
         try:
             base_url = "http://api.openweathermap.org/data/2.5/weather"
             complete_url = f"{base_url}?id={self.city_id}&appid={self.api_key}&units=metric&lang={lang}"
@@ -105,7 +121,7 @@ class Weather2Pwn(plugins.Plugin):
             logging.error(f"[Weather2Pwn] Error getting GPS coordinates: {e}")
             return 0, 0
 
-    def get_weather_by_gps(self, lat, lon, api_key, lang="en"):
+    def get_weather_by_gps(self, lat, lon, api_key, lang):
         try:
             base_url = "http://api.openweathermap.org/data/2.5/weather"
             complete_url = f"{base_url}?lat={lat}&lon={lon}&units=metric&lang={lang}&appid={api_key}"
@@ -150,7 +166,13 @@ class Weather2Pwn(plugins.Plugin):
             self.current_date = datetime.datetime.now().strftime("%Y-%m-%d")
             file_path = f'/root/weather/weather2pwn_data_{self.current_date}.json'
             directory = "/root/weather/"
+            tmp_file_path = '/root/weather/weather2pwn_tmp_data.json'
             logging.info(f"[Weather2Pwn] Logging to {file_path}")
+            tmp_data = {
+                "time": time.strftime("%Y-%m-%d %H:%M"),
+                "lon": self.weather_data.get('coord', {}).get('lon'),
+                "lat": self.weather_data.get('coord', {}).get('lat')
+            }
             data_to_store = {
                 "time": time.strftime("%Y-%m-%d %H:%M:%S"),
                 "weather_data": self.weather_data
@@ -162,6 +184,13 @@ class Weather2Pwn(plugins.Plugin):
                 logging.info("[Weather2Pwn] Weather data stored successfully.")
             except Exception as e:
                 logging.error(f"[Weather2Pwn] Error storing weather data: {e}")
+            try:
+                os.makedirs(directory, exist_ok=True)
+                with open(tmp_file_path, 'w+') as f:
+                    f.write(json.dumps(tmp_data) + '\n')
+                logging.debug("[Weather2Pwn] Weather data location stored successfully.")
+            except Exception as e:
+                logging.error(f"[Weather2Pwn] Error storing weather data location: {e}")
         else:
             pass
 
@@ -193,16 +222,16 @@ class Weather2Pwn(plugins.Plugin):
                 if self.getbycity == False:
                     latitude, longitude = self.get_gps_coordinates()
                     if latitude and longitude:
-                        self.weather_data = self.get_weather_by_gps(latitude, longitude, self.api_key)
+                        self.weather_data = self.get_weather_by_gps(latitude, longitude, self.api_key, self.language)
                         self.weather_data["name"] = self.weather_data["name"] + " *GPS*"
                         logging.info("[Weather2Pwn] weather setup by gps initially")
                     else:
-                        self.weather_data = self.get_weather_by_city_id()
+                        self.weather_data = self.get_weather_by_city_id(self.language)
                         self.logged_lat, self.logged_long = 0, 0
                         latitude, longitude = 0, 0
                         logging.info("[Weather2Pwn] weather setup by city initially")
                 else:
-                    self.weather_data = self.get_weather_by_city_id()
+                    self.weather_data = self.get_weather_by_city_id(self.language)
                     self.logged_lat, self.logged_long = 0, 0
                     latitude, longitude = 0, 0
                 if os.path.exists('/tmp/weather2pwn_data.json'):
@@ -235,12 +264,12 @@ class Weather2Pwn(plugins.Plugin):
         if current_time - self.last_fetch_time >= self.fetch_interval or abs(self.logged_lat - latitude) > 0.005 or abs(self.logged_long - longitude) > 0.005:
             if self.getbycity == False:
                 if abs(self.logged_lat - latitude) > 0.005 or abs(self.logged_long - longitude) > 0.005:
-                    logging.info("[Weather2Pwn] moved past previous location")
-                    logging.info(f"[Weather2Pwn] location {latitude} {longitude}")
-                    logging.info(f"[Weather2Pwn] prevlocation {self.logged_lat} {self.logged_long}")
+                    logging.debug("[Weather2Pwn] moved past previous location")
+                    logging.debug(f"[Weather2Pwn] location {latitude} {longitude}")
+                    logging.debug(f"[Weather2Pwn] prevlocation {self.logged_lat} {self.logged_long}")
                 else:
-                    logging.info("[Weather2Pwn] moved past timeout")
-                logging.info('[Weather2Pwn] getbycity false on Internet')
+                    logging.debug("[Weather2Pwn] moved past timeout")
+                logging.debug('[Weather2Pwn] getbycity false on Internet')
                 try:
                     if latitude and longitude:
                         self.weather_data = self.get_weather_by_gps(latitude, longitude, self.api_key)
@@ -252,7 +281,7 @@ class Weather2Pwn(plugins.Plugin):
                             self.store_weather_data()
                             logging.info(f"[Weather2Pwn] GPS Weather data obtained successfully.")
                         else:
-                            self.weather_data = self.get_weather_by_city_id()
+                            self.weather_data = self.get_weather_by_city_id(self.language)
                             if self.weather_data:
                                 logging.info(f"[Weather2Pwn] City Weather data obtained successfully.")
                             else:
@@ -270,7 +299,7 @@ class Weather2Pwn(plugins.Plugin):
                 except Exception as e:
                     logging.exception(f"[Weather2Pwn] error setting weather on internet {e}")
             else:
-                self.weather_data = self.get_weather_by_city_id()
+                self.weather_data = self.get_weather_by_city_id(self.language)
                 if self.weather_data:
                     self.logged_lat, self.logged_long = 0, 0
                     longitude, latitude = 0, 0
