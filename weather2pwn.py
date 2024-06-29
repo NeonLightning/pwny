@@ -37,8 +37,8 @@ class Weather2Pwn(plugins.Plugin):
             self.fetch_interval = '3600'
             self.getbycity = False
             logging.error(f'[Weather2Pwn] Error loading configuration: {e}')
-        self.logged_lat = None
-        self.logged_long = None
+        self.logged_lat = 0
+        self.logged_long = 0
         self.last_fetch_time = 1680
         self.weather_data = None
 
@@ -141,7 +141,6 @@ class Weather2Pwn(plugins.Plugin):
 
     def on_loaded(self):
         logging.info("[Weather2Pwn] loading")
-        self.internet_counter = 0
         if os.path.exists('/tmp/weather2pwn_data.json'):
             os.remove('/tmp/weather2pwn_data.json')
         logging.info("[Weather2Pwn] Plugin loaded.")
@@ -199,40 +198,52 @@ class Weather2Pwn(plugins.Plugin):
                 ui.set('weather', '')
 
     def on_internet_available(self, agent):
-        logging.info('[Weather2Pwn] internet available')
         current_time = time.time()
-        if current_time - self.last_fetch_time >= self.fetch_interval or abs(self.logged_lat - latitude) < 0.005 and abs(self.logged_long - longitude) < 0.005:
+        latitude, longitude = self.get_gps_coordinates()
+        if current_time - self.last_fetch_time >= self.fetch_interval or abs(self.logged_lat - latitude) < 0.005 or abs(self.logged_long - longitude) < 0.005:
             if self.getbycity == False:
-                logging.info('[Weather2Pwn] getbycity false on Internet')
-                latitude, longitude = self.get_gps_coordinates()
-                if self.logged_latitude and self.logged_longitude:
-                        if latitude and longitude:
-                            self.weather_data = self.get_weather_by_gps(latitude, longitude, self.api_key)
-                            if self.weather_data:
-                                with open('/tmp/weather2pwn_data.json', 'w') as f:
-                                    self.weather_data["name"] = self.weather_data["name"] + " *GPS*"
-                                    json.dump(self.weather_data, f)
-                                logging.info(f"[Weather2Pwn] Weather data obtained successfully.")
-                            else:
-                                weather_data = self.get_weather_by_city_id()
-                                if self.weather_data:
-                                    logging.info(f"[Weather2Pwn] Weather data obtained successfully.")
-                                else:
-                                    if os.path.exists('/tmp/weather2pwn_data.json'):
-                                        os.remove('/tmp/weather2pwn_data.json')
-                                    logging.error("[Weather2Pwn] Failed to fetch weather data.")
-                        else:
-                            if os.path.exists('/tmp/weather2pwn_data.json'):
-                                os.remove('/tmp/weather2pwn_data.json')
-                            logging.error("[Weather2Pwn] GPS coordinates not obtained.")
-                        self.logged_lat, self.logged_long = self.get_gps_coordinates()
+                if abs(self.logged_lat - latitude) < 0.005 or abs(self.logged_long - longitude) < 0.005:
+                    logging.info("[Weather2Pwn] moved past previous location")
                 else:
-                    self.weather_data = self.get_weather_by_city_id()
-                    logging.error("[Weather2Pwn] GPS coordinates not obtained.")
-                self.logged_lat, self.logged_long = self.get_gps_coordinates()
+                    logging.info("[Weather2Pwn] moved past timeout")
+                logging.info('[Weather2Pwn] getbycity false on Internet')
+                try:
+                    if latitude and longitude:
+                        self.weather_data = self.get_weather_by_gps(latitude, longitude, self.api_key)
+                        if self.weather_data:
+                            with open('/tmp/weather2pwn_data.json', 'w') as f:
+                                self.weather_data["name"] = self.weather_data["name"] + " *GPS*"
+                                json.dump(self.weather_data, f)
+                            logging.info(f"[Weather2Pwn] GPS Weather data obtained successfully.")
+                        else:
+                            self.weather_data = self.get_weather_by_city_id()
+                            if self.weather_data:
+                                logging.info(f"[Weather2Pwn] City Weather data obtained successfully.")
+                            else:
+                                if os.path.exists('/tmp/weather2pwn_data.json'):
+                                    os.remove('/tmp/weather2pwn_data.json')
+                                logging.error("[Weather2Pwn] Failed to fetch weather data.")
+                            self.logged_lat = 0
+                            self.logged_long = 0
+                        self.logged_lat, self.logged_long = self.get_gps_coordinates()
+                    else:
+                        if os.path.exists('/tmp/weather2pwn_data.json'):
+                            os.remove('/tmp/weather2pwn_data.json')
+                        self.logged_lat = 0
+                        self.logged_long = 0
+                        logging.error("[Weather2Pwn] GPS coordinates not obtained.")
+                except Exception as e:
+                    logging.exception(f"[Weather2Pwn] error setting weather on internet {e}")
             else:
                 self.weather_data = self.get_weather_by_city_id()
-                logging.info(f"[Weather2Pwn] Weather data obtained by city.")                
+                if self.weather_data:
+                    self.logged_lat = 0
+                    self.logged_long = 0
+                    logging.info(f"[Weather2Pwn] City Weather data obtained successfully.")
+                else:
+                    if os.path.exists('/tmp/weather2pwn_data.json'):
+                        os.remove('/tmp/weather2pwn_data.json')
+                    logging.error("[Weather2Pwn] Failed to fetch weather data.")           
             self.last_fetch_time = current_time
 
     def on_ui_update(self, ui):
