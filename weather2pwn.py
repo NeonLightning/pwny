@@ -45,7 +45,7 @@ class Weather2Pwn(plugins.Plugin):
             logging.error(f'[Weather2Pwn] Error loading configuration: {e}')
         self.logged_lat, self.logged_long = 0, 0
         self.last_fetch_time = 0
-        self.weather_data = None
+        self.weather_data = {}
 
     def _is_internet_available(self):
         try:
@@ -87,7 +87,7 @@ class Weather2Pwn(plugins.Plugin):
 
     def get_gps_coordinates(self):
         if not self.ensure_gpsd_running():
-            return None, None
+            return 0, 0
         try:
             gpsd_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             gpsd_socket.connect(('localhost', 2947))
@@ -103,7 +103,7 @@ class Weather2Pwn(plugins.Plugin):
                         continue
         except Exception as e:
             logging.error(f"[Weather2Pwn] Error getting GPS coordinates: {e}")
-            return None, None
+            return 0, 0
 
     def get_weather_by_gps(self, lat, lon, api_key, lang="en"):
         try:
