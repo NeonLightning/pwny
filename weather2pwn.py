@@ -16,9 +16,9 @@ import pwnagotchi.plugins as plugins
 
 class Weather2Pwn(plugins.Plugin):
     __author__ = 'NeonLightning'
-    __version__ = '1.1.1'
+    __version__ = '1.1.2'
     __license__ = 'GPL3'
-    __description__ = 'Weather display from location data'
+    __description__ = 'Weather display from gps data or city id, with optional logging'
 
     def __init__(self):
         self.config_path = '/etc/pwnagotchi/config.toml'
