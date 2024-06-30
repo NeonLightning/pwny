@@ -226,13 +226,17 @@ class Weather2Pwn(plugins.Plugin):
                         logging.info("[Weather2Pwn] weather setup by gps initially")
                     else:
                         self.weather_data = self.get_weather_by_city_id(self.language)
-                        self.logged_lat, self.logged_long = 0, 0
-                        latitude, longitude = 0, 0
+                        self.logged_long = self.weather_data['lon']
+                        self.logged_lat = self.weather_data['lat']
+                        longitude = self.weather_data['lon']
+                        latitude = self.weather_data['lat']
                         logging.info("[Weather2Pwn] weather setup by city initially")
                 else:
                     self.weather_data = self.get_weather_by_city_id(self.language)
-                    self.logged_lat, self.logged_long = 0, 0
-                    latitude, longitude = 0, 0
+                    self.logged_long = self.weather_data['lon']
+                    self.logged_lat = self.weather_data['lat']
+                    longitude = self.weather_data['lon']
+                    latitude = self.weather_data['lat']
                 if os.path.exists('/tmp/weather2pwn_data.json'):
                     with open('/tmp/weather2pwn_data.json', 'r') as f:
                         self.weather_data = json.load(f)
@@ -297,8 +301,10 @@ class Weather2Pwn(plugins.Plugin):
                                 if os.path.exists('/tmp/weather2pwn_data.json'):
                                     os.remove('/tmp/weather2pwn_data.json')
                                 logging.error("[Weather2Pwn] Failed to fetch weather data.")
-                            self.logged_lat, self.logged_long = 0, 0
-                            longitude, latitude = 0, 0
+                            self.logged_long = self.weather_data['lon']
+                            self.logged_lat = self.weather_data['lat']
+                            longitude = self.weather_data['lon']
+                            latitude = self.weather_data['lat']
                             if self.inetcount == 2:
                                 if self.inetcount == 2:
                                     logging.info("[Weather2Pwn] storing on second count...")
@@ -315,8 +321,10 @@ class Weather2Pwn(plugins.Plugin):
             else:
                 self.weather_data = self.get_weather_by_city_id(self.language)
                 if self.weather_data:
-                    self.logged_lat, self.logged_long = 0, 0
-                    longitude, latitude = 0, 0
+                    self.logged_long = self.weather_data['lon']
+                    self.logged_lat = self.weather_data['lat']
+                    longitude = self.weather_data['lon']
+                    latitude = self.weather_data['lat']
                     if self.inetcountry == 2:
                         self.store_weather_data()
                         self.inetcount = 0
