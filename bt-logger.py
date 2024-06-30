@@ -7,7 +7,7 @@ from pwnagotchi.ui.view import BLACK
 
 class BTLog(plugins.Plugin):
     __author__ = 'NeonLightning'
-    __version__ = '1.0.0'
+    __version__ = '1.0.1'
     __license__ = 'GPL3'
     __description__ = 'Logs and displays a count of bluetooth devices seen.'
 
@@ -125,9 +125,22 @@ class BTLog(plugins.Plugin):
             </html>
         '''
         return render_template_string(template, devices=devices)
-        
+
+    def ensure_gpsd_running(self):
+        try:
+            result = subprocess.run(['pgrep', '-x', 'gpsd'], stdout=subprocess.PIPE)
+            if result.returncode != 0:
+                logging.info("[BT-Log] Starting gpsd...")
+                subprocess.run(['sudo', 'gpsd', self.gps_device, '-F', '/var/run/gpsd.sock'])
+                time.sleep(2)
+        except Exception as e:
+            logging.exception(f"[BT-Log] Error ensuring gpsd is running: {e}")
+            return False
+        return True
+
     def get_gps_coordinates(self):
         try:
+            self.ensure_gpsd_running()
             gpsd_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             gpsd_socket.connect(('localhost', 2947))
             gpsd_socket.sendall(b'?WATCH={"enable":true,"json":true}')
@@ -173,7 +186,7 @@ class BTLog(plugins.Plugin):
                             if latitude is not None and longitude is not None:
                                 log_entry = f"{log_entry}: {latitude}, {longitude}\n"
                             else:
-                                log_entry = f"{entry}\n"
+                                log_entry = f"{entry}: 0, 0\n"
                         else:
                             log_entry = f"{entry}\n"
                         log_file.write(log_entry)
