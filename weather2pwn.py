@@ -246,6 +246,7 @@ class Weather2Pwn(plugins.Plugin):
                     if "weather" in self.weather_data and len(self.weather_data["weather"]) > 0:
                         main_weather = self.weather_data["weather"][0]["main"]
                         ui.set('weather', f"{main_weather}")
+                    logging.info("[Weather2Pwn] storing on startup...")
                     self.store_weather_data()
             except Exception as e:
                 logging.exception(f"[Weather2pwn] An error occurred {e}")
@@ -290,6 +291,10 @@ class Weather2Pwn(plugins.Plugin):
                             self.logged_lat, self.logged_long = 0, 0
                             longitude, latitude = 0, 0
                             if abs(self.logged_lat - latitude) > 0.005 or abs(self.logged_long - longitude) > 0.005 or self.inetcount == 2:
+                                if self.inetcount == 2:
+                                    logging.info("[Weather2Pwn] storing on second count...")
+                                else:
+                                    logging.info("[Weather2Pwn] storing on movement...")
                                 self.store_weather_data()
                                 self.inetcount = 0
                             self.inetcount += 1
