@@ -278,7 +278,17 @@ class Weather2Pwn(plugins.Plugin):
                                 self.weather_data["name"] = self.weather_data["name"] + " *GPS*"
                                 json.dump(self.weather_data, f)
                             self.logged_lat, self.logged_long = latitude, longitude
-                            self.store_weather_data()
+                            if abs(self.logged_lat - latitude) > 0.005 or abs(self.logged_long - longitude) > 0.005 or self.inetcount == 2:
+                                if self.inetcount == 2:
+                                    logging.info("[Weather2Pwn] storing on second count...")
+                                    self.store_weather_data()
+                                    self.inetcount = 0
+                                elif abs(self.logged_lat - latitude) > 0.005 or abs(self.logged_long - longitude) > 0.005:
+                                    logging.info("[Weather2Pwn] storing on movement...")
+                                    self.store_weather_data()
+                                    self.inetcount = 0
+                                else:
+                                    self.inetcount += 1
                             logging.info(f"[Weather2Pwn] GPS Weather data obtained successfully.")
                         else:
                             self.weather_data = self.get_weather_by_city_id(self.language)
@@ -290,11 +300,9 @@ class Weather2Pwn(plugins.Plugin):
                                 logging.error("[Weather2Pwn] Failed to fetch weather data.")
                             self.logged_lat, self.logged_long = 0, 0
                             longitude, latitude = 0, 0
-                            if abs(self.logged_lat - latitude) > 0.005 or abs(self.logged_long - longitude) > 0.005 or self.inetcount == 2:
+                            if self.inetcount == 2:
                                 if self.inetcount == 2:
                                     logging.info("[Weather2Pwn] storing on second count...")
-                                else:
-                                    logging.info("[Weather2Pwn] storing on movement...")
                                 self.store_weather_data()
                                 self.inetcount = 0
                             self.inetcount += 1
