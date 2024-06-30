@@ -287,8 +287,7 @@ class Weather2Pwn(plugins.Plugin):
                                     logging.info("[Weather2Pwn] storing on movement...")
                                     self.store_weather_data()
                                     self.inetcount = 0
-                                else:
-                                    self.inetcount += 1
+                            self.inetcount += 1
                             logging.info(f"[Weather2Pwn] GPS Weather data obtained successfully.")
                         else:
                             self.weather_data = self.get_weather_by_city_id(self.language)
