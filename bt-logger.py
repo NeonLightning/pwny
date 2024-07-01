@@ -1,3 +1,10 @@
+#main.plugins.bt-logger.enabled = true
+#main.plugins.bt-logger.gps = true
+#main.plugins.bt-logger.gps_track = true
+#main.plugins.bt-logger.id_only = true
+#main.plugins.bt-logger.gps_device = "/dev/ttyUSB0"
+
+
 import pwnagotchi, logging, re, subprocess, io, socket, json, time
 import pwnagotchi.plugins as plugins
 import pwnagotchi.ui.fonts as fonts
