@@ -1,4 +1,4 @@
-import pwnagotchi, logging, re, subprocess, io, socket, json
+import pwnagotchi, logging, re, subprocess, io, socket, json, time
 import pwnagotchi.plugins as plugins
 import pwnagotchi.ui.fonts as fonts
 from flask import Flask, render_template_string
@@ -15,6 +15,7 @@ class BTLog(plugins.Plugin):
         self.gps = self.options.get('gps', False)
         self.gps_track = self.options.get('gps_track', True)
         self.id_only = self.options.get('id_only', True)
+        self.gps_device = self.options.get('gps_device', "/dev/ttyUSB0")
         self.count = 0
         self.interim_file = '/root/.btinterim.log'
         self.output = '/root/bluetooth.log'
