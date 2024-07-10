@@ -14,6 +14,7 @@ class BinClock(plugins.Plugin):
 
     def on_loaded(self):
         self.format = self.options.get('format', "%H:%M")
+        self.digits = int(self.options.get('digits', 8))
         logging.info("[BinClock] Loaded")
 
     def on_ui_setup(self, ui):
@@ -25,7 +26,7 @@ class BinClock(plugins.Plugin):
     def on_ui_update(self, ui):
         now = datetime.now()
         current_time = now.strftime(self.format)
-        binary_time = "\n".join(format(int(part), '06b') for part in current_time.split(":"))
+        binary_time = "\n".join(format(int(part), f'0{self.digits}b') for part in current_time.split(":"))
         ui.set('binclock', binary_time)
 
     def on_unload(self, ui):
