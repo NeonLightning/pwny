@@ -1,6 +1,9 @@
 import logging, json, os, glob, pwnagotchi
+from pwnagotchi.ui.components import LabeledValue
+from pwnagotchi.ui.view import BLACK
+import pwnagotchi.ui.fonts as fonts
 import pwnagotchi.plugins as plugins
-from flask import abort, send_from_directory, render_template_string
+from flask import render_template_string
 
 TEMPLATE = """
 {% extends "base.html" %}
@@ -115,41 +118,70 @@ class WpaSecList(plugins.Plugin):
     __description__ = 'List cracked passwords from wpa-sec'
 
     def __init__(self):
-        self.ready = False
+        self.count = 0
+        self.show_number = True
 
     def on_loaded(self):
+        try:
+            self.show_number = self.options.get('show_number', True)
+        except Exception as e:
+            logging.exception(f"[wpa-sec-list] error setting up: {e}")
         logging.info("[Wpa-sec-list] plugin loaded")
 
     def on_config_changed(self, config):
         self.config = config
-        self.ready = True
+
+    def _load_passwords(self):
+        """Helper method to load and parse the cracked passwords file."""
+        passwords = []
+        try:
+            with open(self.config['bettercap']['handshakes'] + "/wpa-sec.cracked.potfile", 'r') as file_in:
+                lines = file_in.readlines()
+            lines = [line.strip() for line in lines if line.strip()]
+            unique_lines = set()
+            for line in lines:
+                fields = line.split(":")
+                line_tuple = (fields[0], fields[2], fields[3])
+                unique_lines.add(line_tuple)
+            for line_tuple in sorted(unique_lines, key=lambda x: x[1]):
+                password = {
+                    "ssid": line_tuple[1],
+                    "bssid": line_tuple[0],
+                    "password": line_tuple[2]
+                }
+                passwords.append(password)
+            return passwords
+        except Exception as e:
+            logging.error(f"[wpa-sec-list] error while loading passwords: {e}")
+            logging.debug(e, exc_info=True)
+            return []
 
     def on_webhook(self, path, request):
-        if not self.ready:
-            return "Plugin not ready"
         if path == "/" or not path:
+            passwords = self._load_passwords()
+            return render_template_string(TEMPLATE,
+                                          title="Passwords list",
+                                          passwords=passwords)
+
+    def on_ui_setup(self, ui):
+        if self.show_number:
             try:
-                passwords = []
-                with open(self.config['bettercap']['handshakes'] + "/wpa-sec.cracked.potfile", 'r') as file_in:
-                    lines = file_in.readlines()
-                lines = [line.strip() for line in lines if line.strip()]
-                unique_lines = set()
-                for line in lines:
-                    fields = line.split(":")
-                    line_tuple = (fields[0], fields[2], fields[3])
-                    unique_lines.add(line_tuple)
-                for line_tuple in sorted(unique_lines, key=lambda x: x[1]):  # Sort by ssid (field index 1)
-                    password = {
-                        "ssid": line_tuple[1],
-                        "bssid": line_tuple[0],
-                        "password": line_tuple[2]
-                    }
-                    passwords.append(password)
-                return render_template_string(TEMPLATE,
-                                        title="Passwords list",
-                                        passwords=passwords)
+                ui.add_element("passwords", LabeledValue(color=BLACK, label="Passes:", value="0", position=(100,93), label_font=fonts.Small, text_font=fonts.Small))
             except Exception as e:
-                logging.error("[wpa-sec-list] error while loading passwords: %s" % e)
-                logging.debug(e, exc_info=True)
+                logging.error(f"[wpa-sec-list] error setting up ui: {e}")
+        
+    def on_ui_update(self, ui):
+        if self.show_number:
+            passwords = self._load_passwords()
+            self.count = len(passwords)
+            logging.debug(f"[wpa-sec-list] {self.count}")
+            ui.set("passwords", str(self.count))
+            self.count = 0
 
-
+    def on_unload(self, ui):
+        if self.show_number:
+            with ui._lock:
+                try:
+                    ui.remove_element('passwords')
+                except Exception as e:
+                    logging.error(f"[wpa-sec-list] {e}")
