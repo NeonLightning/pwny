@@ -1,3 +1,6 @@
+# to show or not show the number of passwords
+# main.plugins.sorted-wpa-sec-list.show_number = True or False
+
 import logging, json, os, glob, pwnagotchi
 from pwnagotchi.ui.components import LabeledValue
 from pwnagotchi.ui.view import BLACK
