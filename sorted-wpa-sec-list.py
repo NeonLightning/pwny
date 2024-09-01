@@ -116,7 +116,7 @@ TEMPLATE = """
 
 class WpaSecList(plugins.Plugin):
     __author__ = 'edited by neonlightning'
-    __version__ = '1.0.1'
+    __version__ = '1.1.0'
     __license__ = 'GPL3'
     __description__ = 'List cracked passwords from wpa-sec'
 
