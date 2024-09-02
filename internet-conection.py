@@ -1,4 +1,4 @@
-import logging, os, pwnagotchi, requests, socket
+import logging, os, pwnagotchi, requests, socket, traceback
 import pwnagotchi.ui.components as components
 import pwnagotchi.ui.view as view
 import pwnagotchi.ui.fonts as fonts
@@ -10,12 +10,21 @@ from PIL import ImageOps, Image
 class InetIcon(pwnagotchi.ui.components.Widget):
     def __init__(self, value, xy=(225, 101), color=0, invert=False):
         super().__init__(xy, color)
-        self.image = Image.open(value)
-        if invert:
-            self.image = ImageOps.invert(self.image.convert('L'))
+        self.image_path = value
+        self.invert = invert
+        self.image = Image.open(self.image_path)
+        if self.invert:
+            self.image = ImageOps.invert(Image.open(self.image_path).convert('L'))
+        else:
+            self.image = Image.open(self.image_path)
 
     def draw(self, canvas, drawer):
-        canvas.paste(self.image, self.xy)
+        if self.image:
+            try:
+                canvas.paste(self.image, self.xy)
+            except Exception as e:
+                logging.error(f"Error drawing image: {e}")
+                logging.error(traceback.format_exc())
 
 class InternetConectionPlugin(plugins.Plugin):
     __author__ = 'neonlightning'
@@ -30,6 +39,7 @@ class InternetConectionPlugin(plugins.Plugin):
     def __init__(self):
         self.icon_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "internet-conection.png")
         self.icon_off_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "internet-conection-off.png")
+        self.current_state = None
 
     def download_icon(self, url, save_path):
         response = requests.get(url)
@@ -90,11 +100,19 @@ class InternetConectionPlugin(plugins.Plugin):
 
     def on_ui_update(self, ui):
         with ui._lock:
-            if self._is_internet_available():
-                ui.remove_element('connection_status')
-                ui.add_element('connection_status', InetIcon(xy=(225, 101), value=self.icon_path, invert=self.invert_status))
-            else:
-                ui.add_element('connection_status', InetIcon(xy=(225, 101), value=self.icon_off_path, invert=self.invert_status))
+            is_connected = self._is_internet_available()
+            if is_connected != self.current_state:
+                self.current_state = is_connected
+                icon_path = self.icon_path if is_connected else self.icon_off_path
+                try:
+                    ui.remove_element('connection_status')
+                except KeyError:
+                    pass
+                try:
+                    ui.add_element('connection_status', InetIcon(xy=(225, 101), value=icon_path, invert=self.invert_status))
+                except Exception as e:
+                    logging.error(f"Error updating connection status: {e}")
+                    logging.error(traceback.format_exc())
 
     def on_unload(self, ui):
         with ui._lock:
