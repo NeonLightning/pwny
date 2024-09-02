@@ -1,12 +1,13 @@
 #goto openweathermap.org and get an api key and cityid.
-#main.plugins.weather2pwn.enabled = true
-#main.plugins.weather2pwn.log = False
-#main.plugins.weather2pwn.fetch_interval = 3600
-#main.plugins.weather2pwn.cityid = "CITY_ID"
-#main.plugins.weather2pwn.getbycity = false
-#main.plugins.weather2pwn.api_key = "API_KEY"
-#main.plugins.weather2pwn.gps = "/dev/ttyACM0"
-#main.plugins.weather2pwn.log = False
+#main.plugins.weather2pwn.enabled = true # enable plugin weather2pwn
+#main.plugins.weather2pwn.log = False # log the weather data
+#main.plugins.weather2pwn.fetch_interval = 3600 # how often to fetch the weather data
+#main.plugins.weather2pwn.cityid = "CITY_ID" # set the cityid
+#main.plugins.weather2pwn.getbycity = false # get the weather data from gps or cityid by default(gps falls back to cityid if not available)
+#main.plugins.weather2pwn.api_key = "API_KEY" # openweathermap.org api key
+#main.plugins.weather2pwn.gps = "/dev/ttyACM0" # gps device entry point
+#main.plugins.weather2pwn.decimal = "true" # include 2 decimal places for the temperature
+#main.plugins.weather2pwn.displays = [ "city", "temp", "sky", ] # display these values on the screen
 
 import socket, json, requests, logging, os, time, toml, subprocess, datetime
 from pwnagotchi.ui.components import LabeledValue
@@ -28,10 +29,15 @@ class Weather2Pwn(plugins.Plugin):
         self.check_and_update_config('main.plugins.weather2pwn.cityid', '""')
         self.check_and_update_config('main.plugins.weather2pwn.gps', '"/dev/ttyUSB0"')
         self.check_and_update_config('main.plugins.weather2pwn.log', 'false')
+        self.check_and_update_config('main.plugins.weather2pwn.decimal', 'true')
+        self.check_and_update_config('main.plugins.weather2pwn.displays', '[ "city", "temp", "sky", ]')
         try:
             with open(self.config_path, 'r') as f:
                 config = toml.load(f)
+                self.displays = config['main']['plugins']['weather2pwn']['displays']
                 self.fetch_interval = config['main']['plugins']['weather2pwn']['fetch_interval']
+                self.decimal = config['main']['plugins']['weather2pwn']['decimal']
+                self.decimal = self.decimal in [True, 'true', 'True']
                 self.api_key = config['main']['plugins']['weather2pwn']['api_key']
                 self.getbycity = config['main']['plugins']['weather2pwn']['getbycity']
                 self.getbycity = self.getbycity in [True, 'true', 'True']
@@ -204,18 +210,21 @@ class Weather2Pwn(plugins.Plugin):
         self.on_internet_available(self, agent)
 
     def on_ui_setup(self, ui):
-        pos1 = (150, 37)
-        ui.add_element('city', LabeledValue(color=BLACK, label='', value='',
-                                            position=pos1,
-                                            label_font=fonts.Small, text_font=fonts.Small))
-        pos2 = (155, 47)
-        ui.add_element('feels_like', LabeledValue(color=BLACK, label='Temp:', value='',
-                                                position=pos2,
+        if 'city' in self.displays:
+            pos1 = (150, 37)
+            ui.add_element('city', LabeledValue(color=BLACK, label='', value='',
+                                                position=pos1,
                                                 label_font=fonts.Small, text_font=fonts.Small))
-        pos3 = (155, 57)
-        ui.add_element('weather', LabeledValue(color=BLACK, label='Sky :', value='',
-                                                position=pos3,
-                                                label_font=fonts.Small, text_font=fonts.Small))
+        if 'temp' in self.displays:
+            pos2 = (155, 47)
+            ui.add_element('feels_like', LabeledValue(color=BLACK, label='Tmp:', value='',
+                                                    position=pos2,
+                                                    label_font=fonts.Small, text_font=fonts.Small))
+        if 'sky' in self.displays:
+            pos3 = (155, 57)
+            ui.add_element('weather', LabeledValue(color=BLACK, label='Sky :', value='',
+                                                    position=pos3,
+                                                    label_font=fonts.Small, text_font=fonts.Small))
         if self._is_internet_available():
             try:
                 if self.getbycity == False:
@@ -246,6 +255,8 @@ class Weather2Pwn(plugins.Plugin):
                         ui.set('city', f"{city_name}")
                     if "main" in self.weather_data and "feels_like" in self.weather_data["main"]:
                         feels_like = self.weather_data["main"]["feels_like"]
+                        if not self.decimal:
+                            feels_like = round(feels_like)
                         ui.set('feels_like', f"{feels_like}°C")
                     if "weather" in self.weather_data and len(self.weather_data["weather"]) > 0:
                         main_weather = self.weather_data["weather"][0]["main"]
@@ -258,9 +269,12 @@ class Weather2Pwn(plugins.Plugin):
         else:
             current_time = time.time()
             if current_time - self.last_fetch_time >= self.fetch_interval:
-                ui.set('city', 'No Network')
-                ui.set('feels_like', '')
-                ui.set('weather', '')
+                if 'city' in self.displays:
+                    ui.set('city', 'No Network')
+                if 'temp' in self.displays:
+                    ui.set('feels_like', '')
+                if 'sky' in self.displays:
+                    ui.set('weather', '')
 
     def on_internet_available(self, agent):
         current_time = time.time()
@@ -344,19 +358,27 @@ class Weather2Pwn(plugins.Plugin):
             if self.weather_data:
                 if "name" in self.weather_data:
                     city_name = self.weather_data["name"]
-                    ui.set('city', f"{city_name}")
+                    if 'city' in self.displays:
+                        ui.set('city', f"{city_name}")
                 if "main" in self.weather_data and "feels_like" in self.weather_data["main"]:
                     feels_like = self.weather_data["main"]["feels_like"]
-                    ui.set('feels_like', f"{feels_like}°C")
+                    if 'temp' in self.displays:
+                        if not self.decimal:
+                            feels_like = round(feels_like)
+                        ui.set('feels_like', f"{feels_like}°C")
                 if "weather" in self.weather_data and len(self.weather_data["weather"]) > 0:
                     main_weather = self.weather_data["weather"][0]["main"]
-                    ui.set('weather', f"{main_weather}")
+                    if 'sky' in self.displays:
+                        ui.set('weather', f"{main_weather}")
         else:
             current_time = time.time()
             if current_time - self.last_fetch_time >= self.fetch_interval:
-                ui.set('city', 'No Network')
-                ui.set('feels_like', '')
-                ui.set('weather', '')
+                if 'city' in self.displays:
+                    ui.set('city', 'No Network')
+                if 'temp' in self.displays:
+                    ui.set('feels_like', '')
+                if 'sky' in self.displays:
+                    ui.set('weather', '')
 
     def on_unload(self, ui):
         with ui._lock:
