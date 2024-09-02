@@ -3,7 +3,7 @@
 #main.plugins.bt-logger.gps_track = true
 #main.plugins.bt-logger.id_only = true
 #main.plugins.bt-logger.gps_device = "/dev/ttyUSB0"
-
+#main.plugins.bt-logger.display = true
 
 import pwnagotchi, logging, re, subprocess, io, socket, json, time
 import pwnagotchi.plugins as plugins
@@ -14,12 +14,13 @@ from pwnagotchi.ui.view import BLACK
 
 class BTLog(plugins.Plugin):
     __author__ = 'NeonLightning'
-    __version__ = '1.0.1'
+    __version__ = '1.0.4'
     __license__ = 'GPL3'
     __description__ = 'Logs and displays a count of bluetooth devices seen.'
 
     def on_loaded(self):
         self.gps = self.options.get('gps', False)
+        self.display = self.options.get('display', False)
         self.gps_track = self.options.get('gps_track', True)
         self.id_only = self.options.get('id_only', True)
         self.gps_device = self.options.get('gps_device', "/dev/ttyUSB0")
@@ -40,30 +41,33 @@ class BTLog(plugins.Plugin):
 
     def on_unload(self, ui):
         self.running = False
-        with ui._lock:
-            try:
-                ui.remove_element('bt-log')
-            except KeyError:
-                pass
+        if self.display == True:
+            with ui._lock:
+                try:
+                    ui.remove_element('bt-log')
+                except KeyError:
+                    pass
         logging.info('[BT-Log] Unloaded')
         
     def on_ui_setup(self, ui):
-        try:
-            ui.add_element('bt-log', LabeledValue(color=BLACK, label='BT#:', value='0', position=(0, 80),
-                                        label_font=fonts.Small, text_font=fonts.Small))
-        except:
-            logging.error(f"[BT-Log] UI not made")
+        if self.display == True:
+            try:
+                ui.add_element('bt-log', LabeledValue(color=BLACK, label='BT#:', value='0', position=(0, 80),
+                                            label_font=fonts.Small, text_font=fonts.Small))
+            except:
+                logging.error(f"[BT-Log] UI not made")
 
     def on_ui_update(self, ui):
-        try:
-            with open(self.output, 'r') as log_file:
-                if isinstance(log_file, io.TextIOBase):
-                    self.count = sum(1 for line in log_file)
-        except FileNotFoundError:
-            self.count = 0
-            with open(self.output, 'w'):
-                pass
-        ui.set('bt-log', str(self.count))
+        if self.display == True:
+            try:
+                with open(self.output, 'r') as log_file:
+                    if isinstance(log_file, io.TextIOBase):
+                        self.count = sum(1 for line in log_file)
+            except FileNotFoundError:
+                self.count = 0
+                with open(self.output, 'w'):
+                    pass
+            ui.set('bt-log', str(self.count))
         
     def on_webhook(self, path, request):
         logging.info(f"Received webhook request for path: {path}")
