@@ -30,6 +30,10 @@ class WebSSHPlugin(plugins.Plugin):
             logging.info('Downloading ttyd.armhf...')
             self.download_ttyd("https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.armhf", self.ttyd_path)
         if os.path.exists(self.ttyd_path):
+            if not os.access(self.ttyd_path, os.X_OK):
+                os.chmod(self.ttyd_path, 0o755)
+                logging.info('[WebSSH] Set ttyd.armhf as executable.')
+            logging.info('[WebSSH] plugin loading ttyd.armhf')
             subprocess.Popen([self.ttyd_path, '--writable', 'bash'])
             logging.info('[WebSSH] plugin loaded')
         else:
