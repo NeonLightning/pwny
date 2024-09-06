@@ -1,7 +1,7 @@
 # to show or not show the number of passwords
-# main.plugins.sorted-wpa-sec-list.show_number = True or False
+# main.plugins.sorted-Sorted-Password-List.show_number = True or False
 
-import logging, json, os, glob, pwnagotchi
+import logging, os
 from pwnagotchi.ui.components import LabeledValue
 from pwnagotchi.ui.view import BLACK
 import pwnagotchi.ui.fonts as fonts
@@ -35,6 +35,12 @@ TEMPLATE = """
         th, td {
             padding: 15px;
             text-align: left;
+        }
+        th.sortable {
+            cursor: pointer;
+        }
+        th.sortable:hover {
+            background-color: #f1f1f1;
         }
         @media screen and (max-width:700px) {
             table, tr, td {
@@ -87,33 +93,75 @@ TEMPLATE = """
                     txtValue = td.textContent || td.innerText;
                     if (txtValue.toUpperCase().indexOf(filter) > -1) {
                         tr[i].style.display = "";
-                    }else{
+                    } else {
                         tr[i].style.display = "none";
                     }
                 }
             }
         }
     }
+    function sortTable(columnIndex) {
+        var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+        table = document.getElementById("tableOptions");
+        switching = true;
+        dir = "asc"; // Set the sorting direction to ascending
+        while (switching) {
+            switching = false;
+            rows = table.rows;
+            for (i = 1; i < (rows.length - 1); i++) {
+                shouldSwitch = false;
+                x = rows[i].getElementsByTagName("TD")[columnIndex];
+                y = rows[i + 1].getElementsByTagName("TD")[columnIndex];
+                if (dir == "asc") {
+                    if (x.textContent.toLowerCase() > y.textContent.toLowerCase()) {
+                        shouldSwitch = true;
+                        break;
+                    }
+                } else if (dir == "desc") {
+                    if (x.textContent.toLowerCase() < y.textContent.toLowerCase()) {
+                        shouldSwitch = true;
+                        break;
+                    }
+                }
+            }
+            if (shouldSwitch) {
+                rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                switching = true;
+                switchcount++;
+            } else {
+                if (switchcount == 0 && dir == "asc") {
+                    dir = "desc";
+                    switching = true;
+                }
+            }
+        }
+    }
+    document.querySelectorAll("th.sortable").forEach(function(th, index) {
+        th.addEventListener("click", function() {
+            sortTable(index);
+        });
+    });
 {% endblock %}
 {% block content %}
     <input type="text" id="searchText" placeholder="Search for ..." title="Type in a filter">
     <table id="tableOptions">
         <tr>
-            <th>SSID</th>
-            <th>BSSID</th>
-            <th>Password</th>
+            <th class="sortable">SSID</th>
+            <th class="sortable">BSSID</th>
+            <th class="sortable">Password</th>
+            <th class="sortable">Origin</th>
         </tr>
         {% for p in passwords %}
             <tr>
                 <td data-label="SSID">{{p["ssid"]}}</td>
                 <td data-label="BSSID">{{p["bssid"]}}</td>
                 <td data-label="Password">{{p["password"]}}</td>
+                <td data-label="Origin">{{p["filename"]}}</td>
             </tr>
         {% endfor %}
     </table>
 {% endblock %}
 """
-
 
 class SortedPasswordList(plugins.Plugin):
     __author__ = 'neonlightning'
@@ -129,8 +177,8 @@ class SortedPasswordList(plugins.Plugin):
         try:
             self.show_number = self.options.get('show_number', True)
         except Exception as e:
-            logging.exception(f"[wpa-sec-list] error setting up: {e}")
-        logging.info("[Wpa-sec-list] plugin loaded")
+            logging.exception(f"[Sorted-Password-List] error setting up: {e}")
+        logging.info("[Sorted-Password-List] plugin loaded")
 
     def on_config_changed(self, config):
         self.config = config
@@ -138,41 +186,54 @@ class SortedPasswordList(plugins.Plugin):
     def _load_passwords(self):
         """Helper method to load and parse the cracked passwords file."""
         passwords = []
+        seen_entries = set()        
         try:
+            lineswpa = []
+            linesrc = []
             if os.path.exists(os.path.join(self.config['bettercap']['handshakes'], 'wpa-sec.cracked.potfile')):
-                # https://github.com/aluminum-ice/pwnagotchi/blob/master/pwnagotchi/plugins/default/wpa-sec.py
+                logging.debug("[Sorted-Password-List] loading wpa-sec.cracked.potfile")
                 with open(os.path.join(self.config['bettercap']['handshakes'], 'wpa-sec.cracked.potfile'), 'r') as file_in:
-                    wpa_lines = [line.strip() for line in file_in.read().split() if line.strip()]
+                    lineswpa = [(line.strip(), 'wpa-sec.cracked.potfile') for line in file_in.readlines() if line.strip()]
             else:
-                logging.info("[Wpa-sec-list] no wpa-sec.cracked.potfile")
+                logging.info("[Sorted-Password-List] no wpa-sec.cracked.potfile")
             if os.path.exists('/root/remote_cracking.potfile'):
-                # https://github.com/xentrify/custom-pwnagotchi-plugins/blob/main/remote_cracking.py
+                logging.debug("[Sorted-Password-List] loading remote_cracking.potfile")
                 with open('/root/remote_cracking.potfile', 'r') as file_in:
-                    rc_lines = [line.strip() for line in file_in.read().split() if line.strip()]
+                    linesrc = [(line.strip(), 'remote_cracking.potfile') for line in file_in.readlines() if line.strip()]
             else:
-                logging.info("[Wpa-sec-list] no remote_cracking.potfile")
-            if not os.path.exists(os.path.join(self.config['bettercap']['handshakes'], 'wpa-sec.cracked.potfile')) and not os.path.exists('/root/remote_cracking.potfile'):
-                logging.info("[Wpa-sec-list] no potfiles found")
+                logging.info("[Sorted-Password-List] no remote_cracking.potfile")
+            if not lineswpa and not linesrc:
+                logging.info("[Sorted-Password-List] no potfiles found")
+                return []
             unique_lines = set()
-            for line in wpa_lines:
+            for line, filename in lineswpa:
                 fields = line.split(":")
-                unique_lines.add((fields[0], fields[2], fields[3]))
-            for line in rc_lines:
+                entry = (fields[0], fields[2], fields[3])
+                if entry not in unique_lines:
+                    unique_lines.add(entry)
+                    passwords.append({
+                        "ssid": entry[1],
+                        "bssid": entry[0],
+                        "password": entry[2],
+                        "filename": filename
+                    })
+            for line, filename in linesrc:
                 fields = line.split(":")
-                unique_lines.add((fields[1], fields[3], fields[4]))
-            
-            for line_tuple in sorted(unique_lines, key=lambda x: x[1]):
-                password = {
-                    "ssid": line_tuple[1],
-                    "bssid": line_tuple[0],
-                    "password": line_tuple[2]
-                }
-                passwords.append(password)
-            return passwords
-        except Exception as e:
-            logging.error(f"[wpa-sec-list] error while loading passwords: {e}")
-            logging.debug(e, exc_info=True)
+                entry = (fields[1], fields[3], fields[4])
+                if entry not in unique_lines:
+                    unique_lines.add(entry)
+                    passwords.append({
+                        "ssid": entry[1],
+                        "bssid": entry[0],
+                        "password": entry[2],
+                        "filename": filename
+                    })
+            return sorted(passwords, key=lambda x: x["ssid"])
+
+        except Exception as err:
+            logging.exception(f"[Sorted-Password-List] error while loading passwords: {repr(err)}")
             return []
+
 
     def on_webhook(self, path, request):
         if path == "/" or not path:
@@ -186,13 +247,13 @@ class SortedPasswordList(plugins.Plugin):
             try:
                 ui.add_element("passwords", LabeledValue(color=BLACK, label="Passes:", value="0", position=(100, 93), label_font=fonts.Small, text_font=fonts.Small))
             except Exception as e:
-                logging.error(f"[wpa-sec-list] error setting up ui: {e}")
+                logging.error(f"[Sorted-Password-List] error setting up ui: {e}")
 
     def on_ui_update(self, ui):
         if self.show_number:
             passwords = self._load_passwords()
             self.count = len(passwords)
-            logging.debug(f"[wpa-sec-list] {self.count}")
+            logging.debug(f"[Sorted-Password-List] {self.count}")
             ui.set("passwords", str(self.count))
             self.count = 0
 
@@ -202,4 +263,5 @@ class SortedPasswordList(plugins.Plugin):
                 try:
                     ui.remove_element('passwords')
                 except Exception as e:
-                    logging.error(f"[wpa-sec-list] {e}")
+                    logging.error(f"[Sorted-Password-List] {e}")
+        logging.info(f"[Sorted-Password-List] unloaded")
