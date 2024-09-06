@@ -67,7 +67,6 @@ TEMPLATE = """
             td::before {
                 content:attr(data-label);
                 word-wrap: break-word;
-                color: white;
                 border-right:2px solid;
                 width: 20%;
                 float:left;
@@ -104,7 +103,7 @@ TEMPLATE = """
         var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
         table = document.getElementById("tableOptions");
         switching = true;
-        dir = "asc"; // Set the sorting direction to ascending
+        dir = "asc";
         while (switching) {
             switching = false;
             rows = table.rows;
@@ -162,7 +161,7 @@ TEMPLATE = """
                     {% if p["lat"] and p["lng"] %}
                         <a href="{{ p["google_maps_link"] }}" target="_blank">{{ p["lat"] }}, {{ p["lng"] }}</a>
                     {% else %}
-                        N/A
+                        no gps.json found
                     {% endif %}
                 </td>
             </tr>
