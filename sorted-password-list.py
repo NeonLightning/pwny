@@ -115,11 +115,11 @@ TEMPLATE = """
 """
 
 
-class WpaSecList(plugins.Plugin):
-    __author__ = 'edited by neonlightning'
-    __version__ = '1.1.1'
+class SortedPasswordList(plugins.Plugin):
+    __author__ = 'neonlightning'
+    __version__ = '1.0.1'
     __license__ = 'GPL3'
-    __description__ = 'List cracked passwords from wpa-sec'
+    __description__ = 'List cracked passwords and show count of them.'
 
     def __init__(self):
         self.count = 0
@@ -140,11 +140,13 @@ class WpaSecList(plugins.Plugin):
         passwords = []
         try:
             if os.path.exists(os.path.join(self.config['bettercap']['handshakes'], 'wpa-sec.cracked.potfile')):
+                # https://github.com/aluminum-ice/pwnagotchi/blob/master/pwnagotchi/plugins/default/wpa-sec.py
                 with open(os.path.join(self.config['bettercap']['handshakes'], 'wpa-sec.cracked.potfile'), 'r') as file_in:
                     wpa_lines = [line.strip() for line in file_in.read().split() if line.strip()]
             else:
                 logging.info("[Wpa-sec-list] no wpa-sec.cracked.potfile")
             if os.path.exists('/root/remote_cracking.potfile'):
+                # https://github.com/xentrify/custom-pwnagotchi-plugins/blob/main/remote_cracking.py
                 with open('/root/remote_cracking.potfile', 'r') as file_in:
                     rc_lines = [line.strip() for line in file_in.read().split() if line.strip()]
             else:
