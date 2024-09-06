@@ -1,7 +1,7 @@
 # to show or not show the number of passwords
 # main.plugins.sorted-Sorted-Password-List.show_number = True or False
 
-import logging, os, json, glob
+import logging, os, json
 from pwnagotchi.ui.components import LabeledValue
 from pwnagotchi.ui.view import BLACK
 import pwnagotchi.ui.fonts as fonts
@@ -85,7 +85,6 @@ TEMPLATE = """
         table = document.getElementById("tableOptions");
         if (table) {
             tr = table.getElementsByTagName("tr");
-
             for (i = 0; i < tr.length; i++) {
                 td = tr[i].getElementsByTagName("td")[0];
                 if (td) {
@@ -217,7 +216,7 @@ class SortedPasswordList(plugins.Plugin):
                 entry = (fields[0], fields[2], fields[3])
                 if entry not in unique_lines:
                     unique_lines.add(entry)
-                    lat, lng, google_maps_link = self._get_location_info(entry[0])
+                    lat, lng, google_maps_link = self._get_location_info(entry[1].replace(" ", ""), entry[0])
                     passwords.append({
                         "ssid": entry[1],
                         "bssid": entry[0],
@@ -232,7 +231,7 @@ class SortedPasswordList(plugins.Plugin):
                 entry = (fields[1], fields[3], fields[4])
                 if entry not in unique_lines:
                     unique_lines.add(entry)
-                    lat, lng, google_maps_link = self._get_location_info(entry[0])
+                    lat, lng, google_maps_link = self._get_location_info(entry[1], entry[0])
                     passwords.append({
                         "ssid": entry[1],
                         "bssid": entry[0],
@@ -243,17 +242,14 @@ class SortedPasswordList(plugins.Plugin):
                         "google_maps_link": google_maps_link
                     })
             return sorted(passwords, key=lambda x: x["ssid"])
-
         except Exception as err:
             logging.exception(f"[Sorted-Password-List] error while loading passwords: {repr(err)}")
             return []
         
-    def _get_location_info(self, bssid):
-        geojson_files = glob.glob(f"/root/handshakes/*_{bssid}.gps.json")
-        if not geojson_files:
-            geojson_files = glob.glob(f"/root/handshakes/*_{bssid}.geo.json")
-        if geojson_files:
-            geojson_file = geojson_files[0]
+    def _get_location_info(self, ssid, bssid):
+        ssid = ssid.replace(" ", "")
+        geojson_file = (f"/root/handshakes/{ssid}_{bssid}.gps.json")
+        if os.path.exists(geojson_file):
             with open(geojson_file, 'r') as geo_file:
                 data = json.load(geo_file)
             if data is not None:
