@@ -1,7 +1,7 @@
 # to show or not show the number of passwords
 # main.plugins.sorted-Sorted-Password-List.show_number = True or False
 
-import logging, os
+import logging, os, json, glob
 from pwnagotchi.ui.components import LabeledValue
 from pwnagotchi.ui.view import BLACK
 import pwnagotchi.ui.fonts as fonts
@@ -150,13 +150,21 @@ TEMPLATE = """
             <th class="sortable">BSSID</th>
             <th class="sortable">Password</th>
             <th class="sortable">Origin</th>
+            <th class="sortable">GPS</th>
         </tr>
         {% for p in passwords %}
             <tr>
-                <td data-label="SSID">{{p["ssid"]}}</td>
-                <td data-label="BSSID">{{p["bssid"]}}</td>
-                <td data-label="Password">{{p["password"]}}</td>
-                <td data-label="Origin">{{p["filename"]}}</td>
+                <td data-label="SSID">{{ p["ssid"] }}</td>
+                <td data-label="BSSID">{{ p["bssid"] }}</td>
+                <td data-label="Password">{{ p["password"] }}</td>
+                <td data-label="Origin">{{ p["filename"] }}</td>
+                <td data-label="GPS">
+                    {% if p["lat"] and p["lng"] %}
+                        <a href="{{ p["google_maps_link"] }}" target="_blank">{{ p["lat"] }}, {{ p["lng"] }}</a>
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </td>
             </tr>
         {% endfor %}
     </table>
@@ -185,8 +193,7 @@ class SortedPasswordList(plugins.Plugin):
 
     def _load_passwords(self):
         """Helper method to load and parse the cracked passwords file."""
-        passwords = []
-        seen_entries = set()        
+        passwords = []      
         try:
             lineswpa = []
             linesrc = []
@@ -211,30 +218,53 @@ class SortedPasswordList(plugins.Plugin):
                 entry = (fields[0], fields[2], fields[3])
                 if entry not in unique_lines:
                     unique_lines.add(entry)
+                    lat, lng, google_maps_link = self._get_location_info(entry[0])
                     passwords.append({
                         "ssid": entry[1],
                         "bssid": entry[0],
                         "password": entry[2],
-                        "filename": filename
+                        "filename": filename,
+                        "lat": lat,
+                        "lng": lng,
+                        "google_maps_link": google_maps_link
                     })
             for line, filename in linesrc:
                 fields = line.split(":")
                 entry = (fields[1], fields[3], fields[4])
                 if entry not in unique_lines:
                     unique_lines.add(entry)
+                    lat, lng, google_maps_link = self._get_location_info(entry[0])
                     passwords.append({
                         "ssid": entry[1],
                         "bssid": entry[0],
                         "password": entry[2],
-                        "filename": filename
+                        "filename": filename,
+                        "lat": lat,
+                        "lng": lng,
+                        "google_maps_link": google_maps_link
                     })
             return sorted(passwords, key=lambda x: x["ssid"])
 
         except Exception as err:
             logging.exception(f"[Sorted-Password-List] error while loading passwords: {repr(err)}")
             return []
-
-
+        
+    def _get_location_info(self, bssid):
+        geojson_files = glob.glob(f"/root/handshakes/*_{bssid}.gps.json")
+        if not geojson_files:
+            geojson_files = glob.glob(f"/root/handshakes/*_{bssid}.geo.json")
+        if geojson_files:
+            geojson_file = geojson_files[0]
+            with open(geojson_file, 'r') as geo_file:
+                data = json.load(geo_file)
+            if data is not None:
+                lat = data.get('Latitude') or data.get('location', {}).get('lat')
+                lng = data.get('Longitude') or data.get('location', {}).get('lng')
+                if lat is not None and lng is not None:
+                    google_maps_link = f"https://www.google.com/maps?q={lat},{lng}"
+                    return lat, lng, google_maps_link
+        return None, None, None
+    
     def on_webhook(self, path, request):
         if path == "/" or not path:
             passwords = self._load_passwords()
