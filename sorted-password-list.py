@@ -176,6 +176,7 @@ class SortedPasswordList(plugins.Plugin):
     __description__ = 'List cracked passwords and show count of them.'
 
     def __init__(self):
+        self.counter = 3
         self.count = 0
         self.show_number = True
 
@@ -196,11 +197,9 @@ class SortedPasswordList(plugins.Plugin):
             lineswpa = []
             linesrc = []
             if os.path.exists(os.path.join(self.config['bettercap']['handshakes'], 'wpa-sec.cracked.potfile')):
-                logging.debug("[Sorted-Password-List] loading wpa-sec.cracked.potfile")
                 with open(os.path.join(self.config['bettercap']['handshakes'], 'wpa-sec.cracked.potfile'), 'r') as file_in:
                     lineswpa = [(line.strip(), 'wpa-sec.cracked.potfile') for line in file_in.readlines() if line.strip()]
             if os.path.exists('/root/remote_cracking.potfile'):
-                logging.debug("[Sorted-Password-List] loading remote_cracking.potfile")
                 with open('/root/remote_cracking.potfile', 'r') as file_in:
                     linesrc = [(line.strip(), 'remote_cracking.potfile') for line in file_in.readlines() if line.strip()]
             if not lineswpa and not linesrc:
@@ -267,6 +266,7 @@ class SortedPasswordList(plugins.Plugin):
                                         passwords=passwords)
 
     def on_ui_setup(self, ui):
+        self.counter = 0
         if self.show_number:
             try:
                 passwords = self._load_passwords()
@@ -276,12 +276,13 @@ class SortedPasswordList(plugins.Plugin):
                 logging.error(f"[Sorted-Password-List] error setting up ui: {e}")
 
     def on_ui_update(self, ui):
-        if self.show_number:
-            passwords = self._load_passwords()
-            self.count = len(passwords)
-            logging.debug(f"[Sorted-Password-List] {self.count}")
-            ui.set("passwords", str(self.count))
-            self.count = 0
+        if self.count >= 3:
+            if self.show_number:
+                passwords = self._load_passwords()
+                self.count = len(passwords)
+                ui.set("passwords", str(self.count))
+            self.counter = 0
+        self.counter + 1
 
     def on_unload(self, ui):
         if self.show_number:
