@@ -179,10 +179,8 @@ class SortedPasswordList(plugins.Plugin):
         self.counter = 3
         self.count = 0
         self.show_number = True
-        self.config = None
-        
-    def on_loaded(self, config):
-        self.config = config
+
+    def on_loaded(self):
         try:
             self.show_number = self.options.get('show_number', True)
         except Exception as e:
@@ -270,7 +268,7 @@ class SortedPasswordList(plugins.Plugin):
             try:
                 passwords = self._load_passwords()
                 self.count = len(passwords)
-                ui.add_element("passwords", LabeledValue(color=BLACK, label="Passes:", value=self.count, position=(100, 93), label_font=fonts.Small, text_font=fonts.Small))
+                ui.add_element("passwords", LabeledValue(color=BLACK, label="Passes:", value=str(self.count), position=(100, 93), label_font=fonts.Small, text_font=fonts.Small))
             except Exception as e:
                 logging.error(f"[Sorted-Password-List] error setting up ui: {e}")
 
