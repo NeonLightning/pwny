@@ -1,7 +1,7 @@
 # to show or not show the number of passwords
 # main.plugins.sorted-Sorted-Password-List.show_number = True or False
 
-import logging, os, json
+import logging, os, json, re
 from pwnagotchi.ui.components import LabeledValue
 from pwnagotchi.ui.view import BLACK
 import pwnagotchi.ui.fonts as fonts
@@ -240,7 +240,7 @@ class SortedPasswordList(plugins.Plugin):
             return []
         
     def _get_location_info(self, ssid, bssid):
-        ssid = ssid.replace(" ", "")
+        ssid = re.sub(r'\W+', '', ssid)
         geojson_file = (f"/root/handshakes/{ssid}_{bssid}.gps.json")
         if os.path.exists(geojson_file):
             with open(geojson_file, 'r') as geo_file:
