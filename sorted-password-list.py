@@ -179,7 +179,8 @@ class SortedPasswordList(plugins.Plugin):
         self.count = 0
         self.show_number = True
 
-    def on_loaded(self):
+    def on_loaded(self, config):
+        self.config = config
         try:
             self.show_number = self.options.get('show_number', True)
         except Exception as e:
@@ -188,10 +189,9 @@ class SortedPasswordList(plugins.Plugin):
 
     def on_config_changed(self, config):
         self.config = config
-
-    def _load_passwords(self):
-        """Helper method to load and parse the cracked passwords file."""
-        passwords = []      
+        
+    def _load_passwords(self, with_location=False):
+        passwords = []
         try:
             lineswpa = []
             linesrc = []
@@ -199,14 +199,10 @@ class SortedPasswordList(plugins.Plugin):
                 logging.debug("[Sorted-Password-List] loading wpa-sec.cracked.potfile")
                 with open(os.path.join(self.config['bettercap']['handshakes'], 'wpa-sec.cracked.potfile'), 'r') as file_in:
                     lineswpa = [(line.strip(), 'wpa-sec.cracked.potfile') for line in file_in.readlines() if line.strip()]
-            else:
-                logging.info("[Sorted-Password-List] no wpa-sec.cracked.potfile")
             if os.path.exists('/root/remote_cracking.potfile'):
                 logging.debug("[Sorted-Password-List] loading remote_cracking.potfile")
                 with open('/root/remote_cracking.potfile', 'r') as file_in:
                     linesrc = [(line.strip(), 'remote_cracking.potfile') for line in file_in.readlines() if line.strip()]
-            else:
-                logging.info("[Sorted-Password-List] no remote_cracking.potfile")
             if not lineswpa and not linesrc:
                 logging.info("[Sorted-Password-List] no potfiles found")
                 return []
@@ -216,30 +212,28 @@ class SortedPasswordList(plugins.Plugin):
                 entry = (fields[0], fields[2], fields[3])
                 if entry not in unique_lines:
                     unique_lines.add(entry)
-                    lat, lng, google_maps_link = self._get_location_info(entry[1].replace(" ", ""), entry[0])
                     passwords.append({
                         "ssid": entry[1],
                         "bssid": entry[0],
                         "password": entry[2],
                         "filename": filename,
-                        "lat": lat,
-                        "lng": lng,
-                        "google_maps_link": google_maps_link
+                        "lat": None,
+                        "lng": None,
+                        "google_maps_link": None
                     })
             for line, filename in linesrc:
                 fields = line.split(":")
                 entry = (fields[1], fields[3], fields[4])
                 if entry not in unique_lines:
                     unique_lines.add(entry)
-                    lat, lng, google_maps_link = self._get_location_info(entry[1], entry[0])
                     passwords.append({
                         "ssid": entry[1],
                         "bssid": entry[0],
                         "password": entry[2],
                         "filename": filename,
-                        "lat": lat,
-                        "lng": lng,
-                        "google_maps_link": google_maps_link
+                        "lat": None,
+                        "lng": None,
+                        "google_maps_link": None
                     })
             return sorted(passwords, key=lambda x: x["ssid"])
         except Exception as err:
@@ -262,10 +256,15 @@ class SortedPasswordList(plugins.Plugin):
     
     def on_webhook(self, path, request):
         if path == "/" or not path:
-            passwords = self._load_passwords()
+            passwords = self._load_passwords(with_location=False)
+            for p in passwords:
+                lat, lng, google_maps_link = self._get_location_info(p['ssid'], p['bssid'])
+                p["lat"] = lat
+                p["lng"] = lng
+                p["google_maps_link"] = google_maps_link
             return render_template_string(TEMPLATE,
-                                          title="Passwords list",
-                                          passwords=passwords)
+                                        title="Passwords list",
+                                        passwords=passwords)
 
     def on_ui_setup(self, ui):
         if self.show_number:
