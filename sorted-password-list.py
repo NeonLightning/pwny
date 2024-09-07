@@ -1,7 +1,7 @@
 # to show or not show the number of passwords
 # main.plugins.sorted-Sorted-Password-List.show_number = True or False
 
-import logging, os, json, re
+import logging, os, json, re, pwnagotchi
 from pwnagotchi.ui.components import LabeledValue
 from pwnagotchi.ui.view import BLACK
 import pwnagotchi.ui.fonts as fonts
@@ -179,7 +179,8 @@ class SortedPasswordList(plugins.Plugin):
         self.counter = 3
         self.count = 0
         self.show_number = True
-
+        self.config = None
+        
     def on_loaded(self, config):
         self.config = config
         try:
@@ -188,16 +189,14 @@ class SortedPasswordList(plugins.Plugin):
             logging.exception(f"[Sorted-Password-List] error setting up: {e}")
         logging.info("[Sorted-Password-List] plugin loaded")
 
-    def on_config_changed(self, config):
-        self.config = config
         
     def _load_passwords(self, with_location=False):
         passwords = []
         try:
             lineswpa = []
             linesrc = []
-            if os.path.exists(os.path.join(self.config['bettercap']['handshakes'], 'wpa-sec.cracked.potfile')):
-                with open(os.path.join(self.config['bettercap']['handshakes'], 'wpa-sec.cracked.potfile'), 'r') as file_in:
+            if os.path.exists('/root/handshakes/wpa-sec.cracked.potfile'):
+                with open('/root/handshakes/wpa-sec.cracked.potfile', 'r') as file_in:
                     lineswpa = [(line.strip(), 'wpa-sec.cracked.potfile') for line in file_in.readlines() if line.strip()]
             if os.path.exists('/root/remote_cracking.potfile'):
                 with open('/root/remote_cracking.potfile', 'r') as file_in:
