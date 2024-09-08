@@ -300,28 +300,30 @@ class SortedPasswordList(plugins.Plugin):
         return None, None, None
     
     def on_webhook(self, path, request):
-        if request.method == "POST":
-            try:
-                data = request.json
-                password = data.get('password')
-                ssid = data.get('ssid')
-                bssid = data.get('bssid')
-                png_filepath = f"/root/handshakes/{ssid}_{bssid}.qr.png"
-                if not os.path.exists(png_filepath):
-                    qr_data = f"WIFI:T:WPA;S:{ssid};P:{password};;"
-                    qr_code = qrcode.QRCode(
-                        error_correction=qrcode.constants.ERROR_CORRECT_L,
-                        box_size=10,
-                        border=4,
-                    )
-                    qr_code.add_data(qr_data)
-                    qr_code.make(fit=True)
-                    img = qr_code.make_image(fill_color="yellow", back_color="black")
-                    img.save(png_filepath)
-                return send_file(png_filepath, mimetype='image/png')
-            except Exception as e:
-                logging.error(f"[Sorted-Password-List] Error processing password click: {e}")
-                return json.dumps({"status": "error", "message": str(e)}), 500
+        if self.qr_display:
+            import qrcode
+            if request.method == "POST":
+                try:
+                    data = request.json
+                    password = data.get('password')
+                    ssid = data.get('ssid')
+                    bssid = data.get('bssid')
+                    png_filepath = f"/root/handshakes/{ssid}_{bssid}.qr.png"
+                    if not os.path.exists(png_filepath):
+                        qr_data = f"WIFI:T:WPA;S:{ssid};P:{password};;"
+                        qr_code = qrcode.QRCode(
+                            error_correction=qrcode.constants.ERROR_CORRECT_L,
+                            box_size=10,
+                            border=4,
+                        )
+                        qr_code.add_data(qr_data)
+                        qr_code.make(fit=True)
+                        img = qr_code.make_image(fill_color="yellow", back_color="black")
+                        img.save(png_filepath)
+                    return send_file(png_filepath, mimetype='image/png')
+                except Exception as e:
+                    logging.error(f"[Sorted-Password-List] Error processing password click: {e}")
+                    return json.dumps({"status": "error", "message": str(e)}), 500
         if path == "/" or not path:
             passwords = self._load_passwords(with_location=False)
             for p in passwords:
