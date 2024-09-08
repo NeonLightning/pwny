@@ -1,12 +1,15 @@
 # to show or not show the number of passwords
 # main.plugins.sorted-Sorted-Password-List.show_number = True or False
+# you can display a qr code for each password
+# you will need to sudo apt install python3-qrcode or sudo pip install qrcode(pip install only on older versions of pwnagotchi)
+# main.plugins.sorted-Sorted-Password-List.qr_display = True or False
 
 import logging, os, json, re, pwnagotchi
 from pwnagotchi.ui.components import LabeledValue
 from pwnagotchi.ui.view import BLACK
 import pwnagotchi.ui.fonts as fonts
 import pwnagotchi.plugins as plugins
-from flask import render_template_string
+from flask import render_template_string, send_file
 
 TEMPLATE = """
 {% extends "base.html" %}
@@ -17,6 +20,7 @@ TEMPLATE = """
 {% block meta %}
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, user-scalable=0" />
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 {% endblock %}
 {% block styles %}
 {{ super() }}
@@ -78,6 +82,33 @@ TEMPLATE = """
     </style>
 {% endblock %}
 {% block script %}
+    function handlePasswordClick(password, ssid, bssid) {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        fetch('/plugins/sorted-password-list', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ password: password, ssid: ssid, bssid: bssid })
+        })
+        .then(response => {
+            if (response.ok && response.headers.get("Content-Type").includes("image/png")) {
+                return response.blob();
+            } else {
+                return response.json();
+            }
+        })
+        .then(data => {
+            if (data instanceof Blob) {
+                const imgURL = URL.createObjectURL(data);
+                window.open(imgURL, '_blank');
+            } else if (data.message) {
+                alert(data.message);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
     var searchInput = document.getElementById("searchText");
     searchInput.onkeyup = function() {
         var filter, table, tr, td, i, txtValue;
@@ -154,7 +185,15 @@ TEMPLATE = """
             <tr>
                 <td data-label="SSID">{{ p["ssid"] }}</td>
                 <td data-label="BSSID">{{ p["bssid"] }}</td>
-                <td data-label="Password">{{ p["password"] }}</td>
+                <td data-label="Password">
+                    {% if qr_display %}
+                        <a href="#" onclick="handlePasswordClick('{{ p['password'] }}', '{{ p['ssid'] }}', '{{ p['bssid'] }}')">
+                            {{ p["password"] }}
+                        </a>
+                    {% else %}
+                        {{ p["password"] }}
+                    {% endif %}
+                </td>
                 <td data-label="Origin">{{ p["filename"] }}</td>
                 <td data-label="GPS">
                     {% if p["lat"] and p["lng"] %}
@@ -179,15 +218,25 @@ class SortedPasswordList(plugins.Plugin):
         self.counter = 3
         self.count = 0
         self.show_number = True
+        self.qr_display = False
 
     def on_loaded(self):
         try:
+            import qrcode
+            qr_library_available = True
+        except ImportError:
+            qr_library_available = False
+        try:
             self.show_number = self.options.get('show_number', True)
+            if qr_library_available:
+                self.qr_display = self.options.get('qr_display', False)
+            else:
+                self.qr_display = False
+            logging.info(f'[Sorted-Password-List] qr_display is {self.qr_display}')
         except Exception as e:
             logging.exception(f"[Sorted-Password-List] error setting up: {e}")
         logging.info("[Sorted-Password-List] plugin loaded")
 
-        
     def _load_passwords(self, with_location=False):
         passwords = []
         try:
@@ -251,6 +300,28 @@ class SortedPasswordList(plugins.Plugin):
         return None, None, None
     
     def on_webhook(self, path, request):
+        if request.method == "POST":
+            try:
+                data = request.json
+                password = data.get('password')
+                ssid = data.get('ssid')
+                bssid = data.get('bssid')
+                png_filepath = f"/root/handshakes/{ssid}_{bssid}.qr.png"
+                if not os.path.exists(png_filepath):
+                    qr_data = f"WIFI:T:WPA;S:{ssid};P:{password};;"
+                    qr_code = qrcode.QRCode(
+                        error_correction=qrcode.constants.ERROR_CORRECT_L,
+                        box_size=10,
+                        border=4,
+                    )
+                    qr_code.add_data(qr_data)
+                    qr_code.make(fit=True)
+                    img = qr_code.make_image(fill_color="yellow", back_color="black")
+                    img.save(png_filepath)
+                return send_file(png_filepath, mimetype='image/png')
+            except Exception as e:
+                logging.error(f"[Sorted-Password-List] Error processing password click: {e}")
+                return json.dumps({"status": "error", "message": str(e)}), 500
         if path == "/" or not path:
             passwords = self._load_passwords(with_location=False)
             for p in passwords:
@@ -260,7 +331,8 @@ class SortedPasswordList(plugins.Plugin):
                 p["google_maps_link"] = google_maps_link
             return render_template_string(TEMPLATE,
                                         title="Passwords list",
-                                        passwords=passwords)
+                                        passwords=passwords,
+                                        qr_display=self.qr_display)
 
     def on_ui_setup(self, ui):
         self.counter = 0
