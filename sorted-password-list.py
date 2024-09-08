@@ -4,7 +4,7 @@
 # you will need to sudo apt install python3-qrcode or sudo pip install qrcode(pip install only on older versions of pwnagotchi)
 # main.plugins.sorted-Sorted-Password-List.qr_display = True or False
 
-import logging, os, json, re, pwnagotchi
+import logging, os, json, re, pwnagotchi, tempfile, glob
 from pwnagotchi.ui.components import LabeledValue
 from pwnagotchi.ui.view import BLACK
 import pwnagotchi.ui.fonts as fonts
@@ -307,9 +307,8 @@ class SortedPasswordList(plugins.Plugin):
                     data = request.json
                     password = data.get('password')
                     ssid = data.get('ssid')
-                    bssid = data.get('bssid')
-                    png_filepath = f"/root/handshakes/{ssid}_{bssid}.qr.png"
-                    if not os.path.exists(png_filepath):
+                    with tempfile.NamedTemporaryFile(delete=False, suffix='.png', prefix='WIFIQR') as temp_file:
+                        png_filepath = temp_file.name
                         qr_data = f"WIFI:T:WPA;S:{ssid};P:{password};;"
                         qr_code = qrcode.QRCode(
                             error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -320,11 +319,19 @@ class SortedPasswordList(plugins.Plugin):
                         qr_code.make(fit=True)
                         img = qr_code.make_image(fill_color="yellow", back_color="black")
                         img.save(png_filepath)
-                    return send_file(png_filepath, mimetype='image/png')
+                        response = send_file(png_filepath, mimetype='image/png')
+                        response.call_on_close(lambda: os.remove(png_filepath))
+                        return response
                 except Exception as e:
                     logging.error(f"[Sorted-Password-List] Error processing password click: {e}")
                     return json.dumps({"status": "error", "message": str(e)}), 500
         if path == "/" or not path:
+            pattern = '/tmp/WIFIQR*.png'
+            for filepath in glob.glob(pattern):
+                try:
+                    os.remove(filepath)
+                except Exception as e:
+                    logging.error(f"[Sorted-Password-List] Error deleting temporary file {filepath}: {e}")
             passwords = self._load_passwords(with_location=False)
             for p in passwords:
                 lat, lng, google_maps_link = self._get_location_info(p['ssid'], p['bssid'])
