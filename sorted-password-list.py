@@ -4,11 +4,12 @@
 # you will need to sudo apt install python3-qrcode or sudo pip install qrcode(pip install only on older versions of pwnagotchi)
 # main.plugins.sorted-Sorted-Password-List.qr_display = True or False
 
-import logging, os, json, re, pwnagotchi, tempfile, glob
+import logging, os, json, re, pwnagotchi, tempfile, glob, operator
 from pwnagotchi.ui.components import LabeledValue
 from pwnagotchi.ui.view import BLACK
 import pwnagotchi.ui.fonts as fonts
 import pwnagotchi.plugins as plugins
+from pwnagotchi.bettercap import Client
 from flask import render_template_string, send_file
 
 TEMPLATE = """
@@ -109,6 +110,7 @@ TEMPLATE = """
         })
         .catch(error => console.error('Error:', error));
     }
+
     var searchInput = document.getElementById("searchText");
     searchInput.onkeyup = function() {
         var filter, table, tr, td, i, txtValue;
@@ -129,42 +131,63 @@ TEMPLATE = """
             }
         }
     }
-    function sortTable(columnIndex) {
+
+    function sortTable(columnIndex, defaultDirection = 'asc') {
         var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
         table = document.getElementById("tableOptions");
         switching = true;
-        dir = "asc";
+        dir = defaultDirection; // Use defaultDirection parameter
+
         while (switching) {
             switching = false;
             rows = table.rows;
+
             for (i = 1; i < (rows.length - 1); i++) {
                 shouldSwitch = false;
                 x = rows[i].getElementsByTagName("TD")[columnIndex];
                 y = rows[i + 1].getElementsByTagName("TD")[columnIndex];
-                if (dir == "asc") {
+
+                if (dir === "asc") {
                     if (x.textContent.toLowerCase() > y.textContent.toLowerCase()) {
                         shouldSwitch = true;
                         break;
                     }
-                } else if (dir == "desc") {
+                } else if (dir === "desc") {
                     if (x.textContent.toLowerCase() < y.textContent.toLowerCase()) {
                         shouldSwitch = true;
                         break;
                     }
                 }
             }
+
             if (shouldSwitch) {
                 rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
                 switching = true;
                 switchcount++;
             } else {
-                if (switchcount == 0 && dir == "asc") {
+                if (switchcount === 0 && dir === "asc") {
                     dir = "desc";
                     switching = true;
                 }
             }
         }
     }
+
+    function defaultSort() {
+        var rssiColumnIndex = 5; // Index of the RSSI column
+        var ssidColumnIndex = 0; // Index of the SSID column
+        var table = document.getElementById("tableOptions");
+        var hasRSSI = Array.from(table.getElementsByTagName("tr")).some(function(row) {
+            return row.getElementsByTagName("td")[rssiColumnIndex] && row.getElementsByTagName("td")[rssiColumnIndex].textContent.trim() !== "not nearby";
+        });
+
+        // Sort by RSSI if available, otherwise by SSID
+        sortTable(hasRSSI ? rssiColumnIndex : ssidColumnIndex);
+    }
+
+    // Call the defaultSort function when the page loads
+    window.onload = defaultSort;
+
     document.querySelectorAll("th.sortable").forEach(function(th, index) {
         th.addEventListener("click", function() {
             sortTable(index);
@@ -180,6 +203,7 @@ TEMPLATE = """
             <th class="sortable">Password</th>
             <th class="sortable">Origin</th>
             <th class="sortable">GPS</th>
+            <th class="sortable">Strength</th>
         </tr>
         {% for p in passwords %}
             <tr>
@@ -202,6 +226,13 @@ TEMPLATE = """
                         no gps.json found
                     {% endif %}
                 </td>
+                <td data-label="Strength">
+                    {% if p["rssi"] %}
+                        {{ p["rssi"] }}
+                    {% else %}
+                        not nearby
+                    {% endif %}
+                </td>
             </tr>
         {% endfor %}
     </table>
@@ -219,6 +250,13 @@ class SortedPasswordList(plugins.Plugin):
         self.count = 0
         self.show_number = True
         self.qr_display = False
+        self.sorted_aps = []
+        self.rssi_data = {}
+        self._agent = None
+
+    def on_ready(self, agent):
+        self._agent = agent
+        logging.info("[Sorted-Password-List] plugin loaded")
 
     def on_loaded(self):
         try:
@@ -235,7 +273,6 @@ class SortedPasswordList(plugins.Plugin):
             logging.info(f'[Sorted-Password-List] qr_display is {self.qr_display}')
         except Exception as e:
             logging.exception(f"[Sorted-Password-List] error setting up: {e}")
-        logging.info("[Sorted-Password-List] plugin loaded")
 
     def _load_passwords(self, with_location=False):
         passwords = []
@@ -264,7 +301,8 @@ class SortedPasswordList(plugins.Plugin):
                         "filename": filename,
                         "lat": None,
                         "lng": None,
-                        "google_maps_link": None
+                        "google_maps_link": None,
+                        "rssi": None
                     })
             for line, filename in linesrc:
                 fields = line.split(":")
@@ -278,7 +316,8 @@ class SortedPasswordList(plugins.Plugin):
                         "filename": filename,
                         "lat": None,
                         "lng": None,
-                        "google_maps_link": None
+                        "google_maps_link": None,
+                        "rssi": None
                     })
             return sorted(passwords, key=lambda x: x["ssid"])
         except Exception as err:
@@ -298,7 +337,23 @@ class SortedPasswordList(plugins.Plugin):
                     google_maps_link = f"https://www.google.com/maps?q={lat},{lng}"
                     return lat, lng, google_maps_link
         return None, None, None
-    
+        
+    def _get_rssi(self):
+        try:
+            if self._agent:
+                wifi_info = self._agent.session(sess="session/wifi")
+                aps = wifi_info.get('aps', [])
+                if aps:
+                    for ap in aps:
+                        rssi = ap.get('rssi')
+                        ssid = ap.get('hostname')
+                        bssid = ap.get('mac')
+                        bssid = bssid.replace(':', '')
+                        if ssid != "<hidden>":
+                            self.rssi_data[bssid] = rssi
+        except Exception as e:
+            logging.error(f"[Sorted-Password-List] Exception encountered: {e}")
+
     def on_webhook(self, path, request):
         if self.qr_display:
             import qrcode
@@ -326,6 +381,7 @@ class SortedPasswordList(plugins.Plugin):
                     logging.error(f"[Sorted-Password-List] Error processing password click: {e}")
                     return json.dumps({"status": "error", "message": str(e)}), 500
         if path == "/" or not path:
+            self._get_rssi()
             pattern = '/tmp/WIFIQR*.png'
             for filepath in glob.glob(pattern):
                 try:
@@ -338,6 +394,7 @@ class SortedPasswordList(plugins.Plugin):
                 p["lat"] = lat
                 p["lng"] = lng
                 p["google_maps_link"] = google_maps_link
+                p["rssi"] = self.rssi_data.get(p['bssid'], 'Not Nearby') 
             return render_template_string(TEMPLATE,
                                         title="Passwords list",
                                         passwords=passwords,
