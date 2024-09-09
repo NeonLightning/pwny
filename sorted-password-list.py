@@ -110,7 +110,6 @@ TEMPLATE = """
         })
         .catch(error => console.error('Error:', error));
     }
-
     var searchInput = document.getElementById("searchText");
     searchInput.onkeyup = function() {
         var filter, table, tr, td, i, txtValue;
@@ -131,17 +130,14 @@ TEMPLATE = """
             }
         }
     }
-
     function sortTable(columnIndex, defaultDirection = 'asc') {
         var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
         table = document.getElementById("tableOptions");
         switching = true;
         dir = defaultDirection; // Use defaultDirection parameter
-
         while (switching) {
             switching = false;
             rows = table.rows;
-
             for (i = 1; i < (rows.length - 1); i++) {
                 shouldSwitch = false;
                 x = rows[i].getElementsByTagName("TD")[columnIndex];
@@ -159,7 +155,6 @@ TEMPLATE = """
                     }
                 }
             }
-
             if (shouldSwitch) {
                 rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
                 switching = true;
@@ -172,7 +167,6 @@ TEMPLATE = """
             }
         }
     }
-
     function defaultSort() {
         var rssiColumnIndex = 5; // Index of the RSSI column
         var ssidColumnIndex = 0; // Index of the SSID column
@@ -180,14 +174,9 @@ TEMPLATE = """
         var hasRSSI = Array.from(table.getElementsByTagName("tr")).some(function(row) {
             return row.getElementsByTagName("td")[rssiColumnIndex] && row.getElementsByTagName("td")[rssiColumnIndex].textContent.trim() !== "not nearby";
         });
-
-        // Sort by RSSI if available, otherwise by SSID
         sortTable(hasRSSI ? rssiColumnIndex : ssidColumnIndex);
     }
-
-    // Call the defaultSort function when the page loads
     window.onload = defaultSort;
-
     document.querySelectorAll("th.sortable").forEach(function(th, index) {
         th.addEventListener("click", function() {
             sortTable(index);
