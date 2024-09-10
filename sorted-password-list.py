@@ -231,7 +231,7 @@ TEMPLATE = """
 
 class SortedPasswordList(plugins.Plugin):
     __author__ = 'neonlightning'
-    __version__ = '1.0.1'
+    __version__ = '2.0.1'
     __license__ = 'GPL3'
     __description__ = 'List cracked passwords and show count of them.'
 
