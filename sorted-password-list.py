@@ -1,8 +1,9 @@
 # to show or not show the number of passwords
-# main.plugins.sorted-Sorted-Password-List.show_number = True or False
+# main.plugins.sorted-password-list.show_number = True or False
+# main.plugins.sorted-password-list.fields = ['ssid', 'bssid', 'password', 'origin', 'gps', 'strength']
 # you can display a qr code for each password
 # you will need to sudo apt install python3-qrcode or sudo pip install qrcode(pip install only on older versions of pwnagotchi)
-# main.plugins.sorted-Sorted-Password-List.qr_display = True or False
+# main.plugins.sorted-password-list.qr_display = True or False
 
 import logging, os, json, re, pwnagotchi, tempfile, glob, operator
 from pwnagotchi.ui.components import LabeledValue
@@ -188,41 +189,65 @@ TEMPLATE = """
     <input type="text" id="searchText" placeholder="Search for ..." title="Type in a filter">
     <table id="tableOptions">
         <tr>
-            <th class="sortable">SSID</th>
-            <th class="sortable">BSSID</th>
-            <th class="sortable">Password</th>
-            <th class="sortable">Origin</th>
-            <th class="sortable">GPS</th>
-            <th class="sortable">Strength</th>
+            {% if ssid_display %}
+                <th class="sortable">SSID</th>
+            {% endif %}
+            {% if bssid_display %}
+                <th class="sortable">BSSID</th>
+            {% endif %}
+            {% if password_display %}
+                <th class="sortable">Password</th>
+            {% endif %}
+            {% if origin_display %}
+                <th class="sortable">Origin</th>
+            {% endif %}
+            {% if gps_display %}
+                <th class="sortable">GPS</th>
+            {% endif %}
+            {% if strength_display %}
+                <th class="sortable">Strength</th>
+            {% endif %}
         </tr>
         {% for p in passwords %}
             <tr>
-                <td data-label="SSID">{{ p["ssid"] }}</td>
-                <td data-label="BSSID">{{ p["bssid"] }}</td>
-                <td data-label="Password">
-                    {% if qr_display %}
-                        <a href="#" onclick="handlePasswordClick('{{ p['password'] }}', '{{ p['ssid'] }}', '{{ p['bssid'] }}')">
+                {% if ssid_display %}
+                    <td data-label="SSID">{{ p["ssid"] }}</td>
+                {% endif %}
+                {% if bssid_display %}
+                    <td data-label="BSSID">{{ p["bssid"] }}</td>
+                {% endif %}
+                {% if password_display %}
+                    <td data-label="Password">
+                        {% if qr_display %}
+                            <a href="#" onclick="handlePasswordClick('{{ p['password'] }}', '{{ p['ssid'] }}', '{{ p['bssid'] }}')">
+                                {{ p["password"] }}
+                            </a>
+                        {% else %}
                             {{ p["password"] }}
-                        </a>
-                    {% else %}
-                        {{ p["password"] }}
-                    {% endif %}
-                </td>
-                <td data-label="Origin">{{ p["filename"] }}</td>
-                <td data-label="GPS">
-                    {% if p["lat"] and p["lng"] %}
-                        <a href="{{ p["google_maps_link"] }}" target="_blank">{{ p["lat"] }}, {{ p["lng"] }}</a>
-                    {% else %}
-                        no gps.json found
-                    {% endif %}
-                </td>
-                <td data-label="Strength">
-                    {% if p["rssi"] %}
-                        {{ p["rssi"] }}
-                    {% else %}
-                        not nearby
-                    {% endif %}
-                </td>
+                        {% endif %}
+                    </td>
+                {% endif %}
+                {% if origin_display %}
+                    <td data-label="Origin">{{ p["filename"] }}</td>
+                {% endif %}
+                {% if gps_display %}
+                    <td data-label="GPS">
+                        {% if p["lat"] and p["lng"] %}
+                            <a href="{{ p["google_maps_link"] }}" target="_blank">{{ p["lat"] }}, {{ p["lng"] }}</a>
+                        {% else %}
+                            no gps.json found
+                        {% endif %}
+                    </td>
+                {% endif %}
+                {% if strength_display %}
+                    <td data-label="Strength">
+                        {% if p["rssi"] %}
+                            {{ p["rssi"] }}
+                        {% else %}
+                            not nearby
+                        {% endif %}
+                    </td>
+                {% endif %}
             </tr>
         {% endfor %}
     </table>
@@ -240,6 +265,7 @@ class SortedPasswordList(plugins.Plugin):
         self.count = 0
         self.show_number = True
         self.qr_display = False
+        self.fields = ['ssid', 'bssid', 'password', 'origin', 'gps', 'strength']
         self.sorted_aps = []
         self.rssi_data = {}
         self._agent = None
@@ -255,7 +281,14 @@ class SortedPasswordList(plugins.Plugin):
         except ImportError:
             qr_library_available = False
         try:
+            self.fields = self.options.get('fields', ['ssid', 'bssid', 'password', 'origin', 'gps', 'strength'])
             self.show_number = self.options.get('show_number', True)
+            self.ssid_display = 'ssid' in self.fields
+            self.bssid_display = 'bssid' in self.fields
+            self.password_display = 'password' in self.fields
+            self.origin_display = 'origin' in self.fields
+            self.gps_display = 'gps' in self.fields
+            self.strength_display = 'strength' in self.fields
             if qr_library_available:
                 self.qr_display = self.options.get('qr_display', False)
             else:
@@ -371,7 +404,8 @@ class SortedPasswordList(plugins.Plugin):
                     logging.error(f"[Sorted-Password-List] Error processing password click: {e}")
                     return json.dumps({"status": "error", "message": str(e)}), 500
         if path == "/" or not path:
-            self._get_rssi()
+            if self.strength_display:
+                self._get_rssi()
             pattern = '/tmp/WIFIQR*.png'
             for filepath in glob.glob(pattern):
                 try:
@@ -380,15 +414,23 @@ class SortedPasswordList(plugins.Plugin):
                     logging.error(f"[Sorted-Password-List] Error deleting temporary file {filepath}: {e}")
             passwords = self._load_passwords(with_location=False)
             for p in passwords:
-                lat, lng, google_maps_link = self._get_location_info(p['ssid'], p['bssid'])
-                p["lat"] = lat
-                p["lng"] = lng
-                p["google_maps_link"] = google_maps_link
-                p["rssi"] = self.rssi_data.get(p['bssid'], 'Not Nearby') 
+                if self.gps_display:
+                    lat, lng, google_maps_link = self._get_location_info(p['ssid'], p['bssid'])
+                    p["lat"] = lat
+                    p["lng"] = lng
+                    p["google_maps_link"] = google_maps_link
+                    p["rssi"] = self.rssi_data.get(p['bssid'], 'Not Nearby') 
             return render_template_string(TEMPLATE,
                                         title="Passwords list",
                                         passwords=passwords,
-                                        qr_display=self.qr_display)
+                                        qr_display=self.qr_display,
+                                        ssid_display=self.ssid_display,
+                                        bssid_display=self.bssid_display,
+                                        password_display=self.password_display,
+                                        origin_display=self.origin_display,
+                                        gps_display=self.gps_display,
+                                        strength_display=self.strength_display
+                                        )
 
     def on_ui_setup(self, ui):
         self.counter = 0
