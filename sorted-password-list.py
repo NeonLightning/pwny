@@ -382,36 +382,33 @@ class SortedPasswordList(plugins.Plugin):
             import qrcode
             if request.method == "POST":
                 try:
-                    data = request.json
-                    password = data.get('password')
-                    ssid = data.get('ssid')
-                    with tempfile.NamedTemporaryFile(delete=False, suffix='.png', prefix='WIFIQR') as temp_file:
-                        png_filepath = temp_file.name
-                        qr_data = f"WIFI:T:WPA;S:{ssid};P:{password};;"
-                        qr_code = qrcode.QRCode(
-                            error_correction=qrcode.constants.ERROR_CORRECT_L,
-                            box_size=10,
-                            border=4,
-                        )
-                        qr_code.add_data(qr_data)
-                        qr_code.make(fit=True)
-                        img = qr_code.make_image(fill_color="yellow", back_color="black")
-                        img.save(png_filepath)
-                        response = send_file(png_filepath, mimetype='image/png')
-                        response.call_on_close(lambda: os.remove(png_filepath))
-                        return response
+                    try:
+                        data = request.json
+                        password = data.get('password')
+                        ssid = data.get('ssid')
+                        with tempfile.NamedTemporaryFile(delete=False, suffix='.png', prefix='WIFIQR') as temp_file:
+                            png_filepath = temp_file.name
+                            qr_data = f"WIFI:T:WPA;S:{ssid};P:{password};;"
+                            qr_code = qrcode.QRCode(
+                                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                                box_size=10,
+                                border=4,
+                            )
+                            qr_code.add_data(qr_data)
+                            qr_code.make(fit=True)
+                            img = qr_code.make_image(fill_color="yellow", back_color="black")
+                            img.save(png_filepath)
+                            response = send_file(png_filepath, mimetype='image/png')
+                            return response
+                    finally:
+                        if os.path.exists(png_filepath):
+                            os.remove(png_filepath)
                 except Exception as e:
                     logging.error(f"[Sorted-Password-List] Error processing password click: {e}")
                     return json.dumps({"status": "error", "message": str(e)}), 500
         if path == "/" or not path:
             if self.strength_display:
                 self._get_rssi()
-            pattern = '/tmp/WIFIQR*.png'
-            for filepath in glob.glob(pattern):
-                try:
-                    os.remove(filepath)
-                except Exception as e:
-                    logging.error(f"[Sorted-Password-List] Error deleting temporary file {filepath}: {e}")
             passwords = self._load_passwords(with_location=False)
             for p in passwords:
                 if self.gps_display:
