@@ -84,6 +84,7 @@ TEMPLATE = """
 {% endblock %}
 {% block script %}
     function handlePasswordClick(password, ssid, bssid) {
+        alert("One Moment");
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         fetch('/plugins/sorted-password-list', {
             method: 'POST',
@@ -134,7 +135,7 @@ TEMPLATE = """
         var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
         table = document.getElementById("tableOptions");
         switching = true;
-        dir = defaultDirection; // Use defaultDirection parameter
+        dir = defaultDirection;
         while (switching) {
             switching = false;
             rows = table.rows;
@@ -168,8 +169,8 @@ TEMPLATE = """
         }
     }
     function defaultSort() {
-        var rssiColumnIndex = 5; // Index of the RSSI column
-        var ssidColumnIndex = 0; // Index of the SSID column
+        var rssiColumnIndex = 5;
+        var ssidColumnIndex = 0;
         var table = document.getElementById("tableOptions");
         var hasRSSI = Array.from(table.getElementsByTagName("tr")).some(function(row) {
             return row.getElementsByTagName("td")[rssiColumnIndex] && row.getElementsByTagName("td")[rssiColumnIndex].textContent.trim() !== "not nearby";
