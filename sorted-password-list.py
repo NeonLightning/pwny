@@ -7,7 +7,7 @@
 # you will need to sudo apt install python3-qrcode or sudo pip install qrcode(pip install only on older versions of pwnagotchi)
 # main.plugins.sorted-password-list.qr_display = True or False
 
-import logging, os, json, re, pwnagotchi, tempfile, glob, operator
+import logging, os, json, re, pwnagotchi, tempfile
 from pwnagotchi.ui.components import LabeledValue
 from pwnagotchi.ui.view import BLACK
 import pwnagotchi.ui.fonts as fonts
@@ -423,9 +423,7 @@ class SortedPasswordList(plugins.Plugin):
                                 response = send_file(png_filepath, mimetype='image/png')
                         return response
                     finally:
-                        if self.keep_qr:
-                            logging.info('[Sorted-Password-List] saving or using qr_data')
-                        else:
+                        if not self.keep_qr:
                             if os.path.exists(png_filepath):
                                 os.remove(png_filepath)
                 except Exception as e:
