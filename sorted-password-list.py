@@ -1,5 +1,7 @@
 # to show or not show the number of passwords
+# all configs are optional
 # main.plugins.sorted-password-list.show_number = True or False
+# main.plugins.sorted-password-list.keep_qr = True or False
 # main.plugins.sorted-password-list.fields = ['ssid', 'bssid', 'password', 'origin', 'gps', 'strength']
 # you can display a qr code for each password
 # you will need to sudo apt install python3-qrcode or sudo pip install qrcode(pip install only on older versions of pwnagotchi)
@@ -269,6 +271,7 @@ class SortedPasswordList(plugins.Plugin):
         self.sorted_aps = []
         self.rssi_data = {}
         self._agent = None
+        self.keep_qr = False
 
     def on_ready(self, agent):
         self._agent = agent
@@ -283,6 +286,7 @@ class SortedPasswordList(plugins.Plugin):
         try:
             self.fields = self.options.get('fields', ['ssid', 'bssid', 'password', 'origin', 'gps', 'strength'])
             self.show_number = self.options.get('show_number', True)
+            self.keep_qr = self.options.get('keep_qr', False)
             self.ssid_display = 'ssid' in self.fields
             self.bssid_display = 'bssid' in self.fields
             self.password_display = 'password' in self.fields
@@ -386,23 +390,44 @@ class SortedPasswordList(plugins.Plugin):
                         data = request.json
                         password = data.get('password')
                         ssid = data.get('ssid')
-                        with tempfile.NamedTemporaryFile(delete=False, suffix='.png', prefix='WIFIQR') as temp_file:
-                            png_filepath = temp_file.name
-                            qr_data = f"WIFI:T:WPA;S:{ssid};P:{password};;"
-                            qr_code = qrcode.QRCode(
-                                error_correction=qrcode.constants.ERROR_CORRECT_L,
-                                box_size=10,
-                                border=4,
-                            )
-                            qr_code.add_data(qr_data)
-                            qr_code.make(fit=True)
-                            img = qr_code.make_image(fill_color="yellow", back_color="black")
-                            img.save(png_filepath)
-                            response = send_file(png_filepath, mimetype='image/png')
-                            return response
+                        bssid = data.get('bssid')
+                        png_filepath = f'/root/handshakes/{ssid}_{bssid}_{password}.png'
+                        if self.keep_qr:
+                            if os.path.exists(png_filepath):
+                                response = send_file(png_filepath, mimetype='image/png')
+                            else:
+                                qr_data = f"WIFI:T:WPA;S:{ssid};P:{password};;"
+                                qr_code = qrcode.QRCode(
+                                    error_correction=qrcode.constants.ERROR_CORRECT_L,
+                                    box_size=10,
+                                    border=4,
+                                )
+                                qr_code.add_data(qr_data)
+                                qr_code.make(fit=True)
+                                img = qr_code.make_image(fill_color="yellow", back_color="black")
+                                img.save(png_filepath)
+                                response = send_file(png_filepath, mimetype='image/png')
+                        else:
+                            with tempfile.NamedTemporaryFile(delete=False, suffix='.png', prefix='WIFIQR') as temp_file:
+                                png_filepath = temp_file.name
+                                qr_data = f"WIFI:T:WPA;S:{ssid};P:{password};;"
+                                qr_code = qrcode.QRCode(
+                                    error_correction=qrcode.constants.ERROR_CORRECT_L,
+                                    box_size=10,
+                                    border=4,
+                                )
+                                qr_code.add_data(qr_data)
+                                qr_code.make(fit=True)
+                                img = qr_code.make_image(fill_color="yellow", back_color="black")
+                                img.save(png_filepath)
+                                response = send_file(png_filepath, mimetype='image/png')
+                        return response
                     finally:
-                        if os.path.exists(png_filepath):
-                            os.remove(png_filepath)
+                        if self.keep_qr:
+                            logging.info('[Sorted-Password-List] saving or using qr_data')
+                        else:
+                            if os.path.exists(png_filepath):
+                                os.remove(png_filepath)
                 except Exception as e:
                     logging.error(f"[Sorted-Password-List] Error processing password click: {e}")
                     return json.dumps({"status": "error", "message": str(e)}), 500
