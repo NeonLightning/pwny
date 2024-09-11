@@ -1,11 +1,15 @@
 # to show or not show the number of passwords
 # all configs are optional
+################################################################
+# this will show the number of unique passwords
 # main.plugins.sorted-password-list.show_number = True or False
+# this will keep the qr files in /root/handshakes/ when you create one
 # main.plugins.sorted-password-list.keep_qr = True or False
+# this will limit the fields displayed in webui to the ones chosen
 # main.plugins.sorted-password-list.fields = ['ssid', 'bssid', 'password', 'origin', 'gps', 'strength']
 # you can display a qr code for each password
-# you will need to sudo apt install python3-qrcode or sudo pip install qrcode(pip install only on older versions of pwnagotchi)
 # main.plugins.sorted-password-list.qr_display = True or False
+# you will need to sudo apt install python3-qrcode or sudo pip install qrcode(pip install only on older versions of pwnagotchi)
 
 import logging, os, json, re, pwnagotchi, tempfile
 from pwnagotchi.ui.components import LabeledValue
@@ -258,7 +262,7 @@ TEMPLATE = """
 
 class SortedPasswordList(plugins.Plugin):
     __author__ = 'neonlightning'
-    __version__ = '2.0.1'
+    __version__ = '2.0.2'
     __license__ = 'GPL3'
     __description__ = 'List cracked passwords and show count of them.'
 
