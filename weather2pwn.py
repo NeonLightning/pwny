@@ -272,8 +272,8 @@ class Weather2Pwn(plugins.Plugin):
     def on_internet_available(self, agent):
         current_time = time.time()
         latitude, longitude = self.get_gps_coordinates()
-        self.inetcount += 1
         if current_time - self.last_fetch_time >= self.fetch_interval or abs(self.logged_lat - latitude) >= 0.005 or abs(self.logged_long - longitude) > 0.005:
+            self.inetcount += 1
             try:
                 if abs(self.logged_lat - latitude) >= 0.005 or abs(self.logged_long - longitude) >= 0.005 or self.inetcount >= 2:
                     if self.getbycity == False:
