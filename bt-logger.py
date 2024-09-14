@@ -23,7 +23,6 @@ class BTLog(plugins.Plugin):
         self.display = self.options.get('display', False)
         self.gps_track = self.options.get('gps_track', True)
         self.id_only = self.options.get('id_only', True)
-        self.gps_device = self.options.get('gps_device', "/dev/ttyUSB0")
         self.count = 0
         self.interim_file = '/root/.btinterim.log'
         self.output = '/root/bluetooth.log'
@@ -142,13 +141,12 @@ class BTLog(plugins.Plugin):
         try:
             result = subprocess.run(['pgrep', '-x', 'gpsd'], stdout=subprocess.PIPE)
             if result.returncode != 0 or not result.returncode == None:
-                logging.info("[BT-Log] Gpsd running")
+                return True
             else:
-                logging.info("[BT-Log] Gpsd not running")
+                return False
         except Exception as e:
             logging.exception(f"[BT-Log] Error ensuring gpsd is running: {e}")
             return False
-        return True
 
     def get_gps_coordinates(self):
         if not self.ensure_gpsd_running():
