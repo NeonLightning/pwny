@@ -122,6 +122,7 @@ class Weather2Pwn(plugins.Plugin):
                     try:
                         report = json.loads(line)
                         if report['class'] == 'TPV' and 'lat' in report and 'lon' in report:
+                            logging.info(f'[Weather2Pwn] GPS data found.{report['lat']}, {report['lon']}')
                             return report['lat'], report['lon']
                     except json.JSONDecodeError:
                         logging.warning('[Weather2Pwn] Failed to decode JSON response.')

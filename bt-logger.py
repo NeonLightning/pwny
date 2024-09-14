@@ -164,12 +164,11 @@ class BTLog(plugins.Plugin):
                         if report['class'] == 'TPV' and 'lat' in report and 'lon' in report:
                             return report['lat'], report['lon']
                     except json.JSONDecodeError:
-                        logging.warning('[Weather2Pwn] Failed to decode JSON response.')
+                        logging.warning('[BT-log] Failed to decode JSON response.')
                         return 0, 0
-                logging.info('[Weather2Pwn] No GPS data found.')
                 return 0, 0
             except Exception as e:
-                logging.exception(f"[Weather2Pwn] Error getting GPS coordinates: {e}")
+                logging.exception(f"[BT-Log] Error getting GPS coordinates: {e}")
                 return 0, 0
             finally:
                 gpsd_socket.close()
@@ -194,24 +193,25 @@ class BTLog(plugins.Plugin):
                     mac_address = match.group(1)
                     device_name = match.group(2)
                     entry = f"{device_name} {mac_address}"
-                    latitude, longitude = self.get_gps_coordinates()
                     if not self.is_duplicate(entry, interim_file, latitude, longitude) and (not self.id_only or not hex_pattern.search(device_name)):
-                        self.count += 1
-                        log_entry = f"{entry}"
-                        logging.info(f"[BT-Log] {log_entry}")
-                        if self.gps:
-                            if latitude is not None and longitude is not None:
-                                log_entry = f"{log_entry}: {latitude}, {longitude}\n"
+                        latitude, longitude = self.get_gps_coordinates()
+                        if not self.is_duplicate(entry, interim_file, latitude, longitude) and (not self.id_only or not hex_pattern.search(device_name)):
+                            self.count += 1
+                            log_entry = f"{entry}"
+                            logging.info(f"[BT-Log] {log_entry}")
+                            if self.gps:
+                                if latitude is not None and longitude is not None:
+                                    log_entry = f"{log_entry}: {latitude}, {longitude}\n"
+                                else:
+                                    log_entry = f"{entry}: 0, 0\n"
                             else:
-                                log_entry = f"{entry}: 0, 0\n"
-                        else:
-                            log_entry = f"{entry}\n"
-                        log_file.write(log_entry)
-                        log_file.flush()
-                        with open(interim_file, 'a') as interim:
-                            interim.write(f"{entry} {latitude} {longitude}\n")
-                            interim.flush()
-                        self.organize_bluetooth_log(output_file)
+                                log_entry = f"{entry}\n"
+                            log_file.write(log_entry)
+                            log_file.flush()
+                            with open(interim_file, 'a') as interim:
+                                interim.write(f"{entry} {latitude} {longitude}\n")
+                                interim.flush()
+                            self.organize_bluetooth_log(output_file)
 
     def is_duplicate(self, entry, interim_file, latitude, longitude):
         try:
