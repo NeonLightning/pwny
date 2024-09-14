@@ -7,9 +7,11 @@
 # main.plugins.sorted-password-list.keep_qr = True or False
 # this will limit the fields displayed in webui to the ones chosen
 # main.plugins.sorted-password-list.fields = ['ssid', 'bssid', 'password', 'origin', 'gps', 'strength']
+# this will set a custom position (X, Y)
+# main.plugins.sorted-password-list.position = "0,93"
 # you can display a qr code for each password
 # main.plugins.sorted-password-list.qr_display = True or False
-# you will need to sudo apt install python3-qrcode or sudo pip install qrcode(pip install only on older versions of pwnagotchi)
+# you will need to sudo apt install python3-qrcode or sudo pip install qrcode (pip install only on older versions of pwnagotchi)
 
 import logging, os, json, re, pwnagotchi, tempfile
 from pwnagotchi.ui.components import LabeledValue
@@ -260,6 +262,7 @@ TEMPLATE = """
 {% endblock %}
 """
 
+
 class SortedPasswordList(plugins.Plugin):
     __author__ = 'neonlightning'
     __version__ = '2.0.2'
@@ -313,8 +316,8 @@ class SortedPasswordList(plugins.Plugin):
             if os.path.exists('/root/handshakes/wpa-sec.cracked.potfile'):
                 with open('/root/handshakes/wpa-sec.cracked.potfile', 'r') as file_in:
                     lineswpa = [(line.strip(), 'wpa-sec.cracked.potfile') for line in file_in.readlines() if line.strip()]
-            if os.path.exists('/root/remote_cracking.potfile'):
-                with open('/root/remote_cracking.potfile', 'r') as file_in:
+            if os.path.exists('/root/handshakes/remote_cracking.potfile'):
+                with open('/root/handshakes/remote_cracking.potfile', 'r') as file_in:
                     linesrc = [(line.strip(), 'remote_cracking.potfile') for line in file_in.readlines() if line.strip()]
             if not lineswpa and not linesrc:
                 logging.info("[Sorted-Password-List] no potfiles found")
@@ -354,7 +357,7 @@ class SortedPasswordList(plugins.Plugin):
         except Exception as err:
             logging.exception(f"[Sorted-Password-List] error while loading passwords: {repr(err)}")
             return []
-        
+
     def _get_location_info(self, ssid, bssid):
         ssid = re.sub(r'\W+', '', ssid)
         geojson_file = (f"/root/handshakes/{ssid}_{bssid}.gps.json")
@@ -368,7 +371,7 @@ class SortedPasswordList(plugins.Plugin):
                     google_maps_link = f"https://www.google.com/maps?q={lat},{lng}"
                     return lat, lng, google_maps_link
         return None, None, None
-        
+
     def _get_rssi(self):
         try:
             if self._agent:
@@ -443,37 +446,49 @@ class SortedPasswordList(plugins.Plugin):
                     p["lat"] = lat
                     p["lng"] = lng
                     p["google_maps_link"] = google_maps_link
-                    p["rssi"] = self.rssi_data.get(p['bssid'], 'Not Nearby') 
+                    p["rssi"] = self.rssi_data.get(p['bssid'], 'Not Nearby')
             return render_template_string(TEMPLATE,
-                                        title="Passwords list",
-                                        passwords=passwords,
-                                        qr_display=self.qr_display,
-                                        ssid_display=self.ssid_display,
-                                        bssid_display=self.bssid_display,
-                                        password_display=self.password_display,
-                                        origin_display=self.origin_display,
-                                        gps_display=self.gps_display,
-                                        strength_display=self.strength_display
-                                        )
+                                          title="Passwords list",
+                                          passwords=passwords,
+                                          qr_display=self.qr_display,
+                                          ssid_display=self.ssid_display,
+                                          bssid_display=self.bssid_display,
+                                          password_display=self.password_display,
+                                          origin_display=self.origin_display,
+                                          gps_display=self.gps_display,
+                                          strength_display=self.strength_display
+                                          )
 
     def on_ui_setup(self, ui):
         self.counter = 0
         if self.show_number:
-            try:
-                passwords = self._load_passwords()
-                self.count = len(passwords)
-                ui.add_element("passwords", LabeledValue(color=BLACK, label="Passes:", value=str(self.count), position=(100, 93), label_font=fonts.Small, text_font=fonts.Small))
-            except Exception as e:
-                logging.error(f"[Sorted-Password-List] error setting up ui: {e}")
+            pos = None
+            if "position" in self.options:
+                try:
+                    pos = [int(x.strip()) for x in self.options["position"].split(",")]
+                    if not len(pos) >= 2:
+                        logging.error("[Sorted-Password-List] Could not process set position, using default.")
+                    elif len(pos) > 2:
+                        logging.error("[Sorted-Password-List] Too many positions set (only two are needed: x,y), using the first two.")
+                        pos = (pos[0], pos[1])
+                    else:
+                        pos = (pos[0], pos[1])
+                except Exception:
+                    logging.error("[Sorted-Password-List] Could not process set position, using default.")
+
+            if not pos:
+                pos = (0, 98)
+
+            ui.add_element("passwords", LabeledValue(color=BLACK, label="Passes:", value="...", position=pos, label_font=fonts.Small, text_font=fonts.Small))
 
     def on_ui_update(self, ui):
-        if self.count >= 3:
+        if self.counter >= 3:
             if self.show_number:
                 passwords = self._load_passwords()
                 self.count = len(passwords)
                 ui.set("passwords", str(self.count))
             self.counter = 0
-        self.counter + 1
+        self.counter += 1
 
     def on_unload(self, ui):
         if self.show_number:
