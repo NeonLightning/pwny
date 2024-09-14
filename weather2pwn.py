@@ -244,11 +244,11 @@ class Weather2Pwn(plugins.Plugin):
     def _update_weather(self):
         current_time = time.time()
         latitude, longitude = self.get_gps_coordinates()
-        if (self.readycheck or current_time - self.last_fetch_time >= self.fetch_interval or abs(self.logged_lat - latitude) >= 0.005 or abs(self.logged_long - longitude) > 0.005):
-            logging.info(f'[Weather2Pwn] cycle count {self.inetcount}')
+        logging.debug(f"[Weather2Pwn] Latitude diff: {abs(self.logged_lat - latitude)}, Longitude diff: {abs(self.logged_long - longitude)}, inetcount: {self.inetcount}, last time: {self.last_fetch_time} current time: {current_time} fetch time: {self.fetch_interval}")
+        if (self.readycheck or current_time - self.last_fetch_time >= self.fetch_interval or abs(self.logged_lat - latitude) >= 0.01 or abs(self.logged_long - longitude) > 0.01):
             self.inetcount += 1
             try:
-                if abs(self.logged_lat - latitude) >= 0.005 or abs(self.logged_long - longitude) >= 0.005 or self.inetcount >= 2:
+                if abs(self.logged_lat - latitude) >= 0.01 or abs(self.logged_long - longitude) >= 0.01 or self.inetcount >= 2:
                     if self.getbycity == False:
                         latitude, longitude = self.get_gps_coordinates()
                         if latitude != 0 and longitude != 0:
@@ -268,6 +268,8 @@ class Weather2Pwn(plugins.Plugin):
                             self.weather_data = json.load(f)
                     if self.weather_data:
                         self.store_weather_data()
+                        self.logged_lat = latitude
+                        self.logged_long = longitude
                         self.inetcount = 0
             except Exception as e:
                 logging.exception(f"[Weather2pwn] An error occurred {e}")
