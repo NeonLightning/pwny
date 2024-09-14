@@ -17,7 +17,7 @@ import pwnagotchi.plugins as plugins
 
 class Weather2Pwn(plugins.Plugin):
     __author__ = 'NeonLightning'
-    __version__ = '2.0.3'
+    __version__ = '2.0.4'
     __license__ = 'GPL3'
     __description__ = 'Weather display from gps data or city id, with optional logging'
 
@@ -62,12 +62,14 @@ class Weather2Pwn(plugins.Plugin):
         else:
             self.logged_lat, self.logged_long = 0, 0
         self.last_fetch_time = 0
-        self.fetch_interval = 1800
         self.inetcount = 3
         self.weather_data = {}
         self.current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+        self.readycheck = False
         
     def on_ready(self, agent):
+        self.readycheck = True
+        time.sleep(5)
         self._update_weather()
         logging.info("[Weather2Pwn] Ready")
 
@@ -122,7 +124,6 @@ class Weather2Pwn(plugins.Plugin):
                     try:
                         report = json.loads(line)
                         if report['class'] == 'TPV' and 'lat' in report and 'lon' in report:
-                            logging.info(f"[Weather2Pwn] GPS data found. {report['lat']}, {report['lon']}")
                             return report['lat'], report['lon']
                     except json.JSONDecodeError:
                         logging.warning('[Weather2Pwn] Failed to decode JSON response.')
@@ -233,22 +234,29 @@ class Weather2Pwn(plugins.Plugin):
                                                     label_font=fonts.Small, text_font=fonts.Small))
 
     def on_internet_available(self, agent):
-        self._update_weather()
+        if self.readycheck and self.weather_data:
+            logging.info('[Weather2Pwn] skipping first check')
+        else:
+            self._update_weather()
+        self.readycheck = False
     
     def _update_weather(self):
         current_time = time.time()
         latitude, longitude = self.get_gps_coordinates()
-        if current_time - self.last_fetch_time >= self.fetch_interval or abs(self.logged_lat - latitude) >= 0.005 or abs(self.logged_long - longitude) > 0.005:
+        if (self.readycheck or current_time - self.last_fetch_time >= self.fetch_interval or abs(self.logged_lat - latitude) >= 0.005 or abs(self.logged_long - longitude) > 0.005):
+            logging.info(f'[Weather2Pwn] cycle count {self.inetcount}')
             self.inetcount += 1
             try:
                 if abs(self.logged_lat - latitude) >= 0.005 or abs(self.logged_long - longitude) >= 0.005 or self.inetcount >= 2:
                     if self.getbycity == False:
                         latitude, longitude = self.get_gps_coordinates()
                         if latitude != 0 and longitude != 0:
+                            logging.info(f"[Weather2Pwn] GPS data found. {latitude}, {longitude}")
                             self.weather_data = self.get_weather_by_gps(latitude, longitude, self.api_key, self.language)
                             self.weather_data["name"] = self.weather_data["name"] + " *GPS*"
                             logging.info("[Weather2Pwn] weather setup by gps")
                         else:
+                            logging.info(f"[Weather2Pwn] GPS data not found.")
                             self.weather_data = self.get_weather_by_city_id(self.language)
                             logging.info("[Weather2Pwn] weather setup by city")
                     else:
@@ -264,6 +272,7 @@ class Weather2Pwn(plugins.Plugin):
                 logging.exception(f"[Weather2pwn] An error occurred {e}")
                 logging.exception(f"[Weather2pwn] An error occurred2 {self.weather_data}")
             self.last_fetch_time = current_time
+            self.readycheck = False
 
     def on_ui_update(self, ui):
         if self._is_internet_available():
