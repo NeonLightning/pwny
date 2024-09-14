@@ -68,6 +68,7 @@ class Weather2Pwn(plugins.Plugin):
         
     def on_ready(self, agent):
         self._update_weather()
+        logging.info("[Weather2Pwn] Ready")
 
     def _is_internet_available(self):
         try:

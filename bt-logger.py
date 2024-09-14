@@ -141,22 +141,24 @@ class BTLog(plugins.Plugin):
     def ensure_gpsd_running(self):
         try:
             result = subprocess.run(['pgrep', '-x', 'gpsd'], stdout=subprocess.PIPE)
-            if result.returncode != 0:
-                logging.info("[BT-Log] Starting gpsd...")
-                subprocess.run(['sudo', 'gpsd', self.gps_device, '-F', '/var/run/gpsd.sock'])
-                time.sleep(2)
+            if result.returncode != 0 or not result.returncode == None:
+                logging.info("[BT-Log] Gpsd running")
+            else:
+                logging.info("[BT-Log] Gpsd not running")
         except Exception as e:
             logging.exception(f"[BT-Log] Error ensuring gpsd is running: {e}")
             return False
         return True
 
     def get_gps_coordinates(self):
-        try:
-            self.ensure_gpsd_running()
-            gpsd_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            gpsd_socket.connect(('localhost', 2947))
-            gpsd_socket.sendall(b'?WATCH={"enable":true,"json":true}')
-            while True:
+        if not self.ensure_gpsd_running():
+            return 0, 0
+        else:
+            try:
+                gpsd_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                gpsd_socket.connect(('localhost', 2947))
+                gpsd_socket.sendall(b'?WATCH={"enable":true,"json":true}\n')
+                time.sleep(2)
                 data = gpsd_socket.recv(4096).decode('utf-8')
                 for line in data.splitlines():
                     try:
@@ -164,10 +166,15 @@ class BTLog(plugins.Plugin):
                         if report['class'] == 'TPV' and 'lat' in report and 'lon' in report:
                             return report['lat'], report['lon']
                     except json.JSONDecodeError:
-                        continue
-        except Exception as e:
-            logging.error(f"[BT-Log] Error getting GPS coordinates: {e}")
-            return None, None
+                        logging.warning('[Weather2Pwn] Failed to decode JSON response.')
+                        return 0, 0
+                logging.info('[Weather2Pwn] No GPS data found.')
+                return 0, 0
+            except Exception as e:
+                logging.exception(f"[Weather2Pwn] Error getting GPS coordinates: {e}")
+                return 0, 0
+            finally:
+                gpsd_socket.close()
 
     def remove_ansi_escape_sequences(self, text):
         ansi_escape = re.compile(r'\x1B[@-_][0-?]*[ -/]*[@-~]|\x1B\[.*?[@-~]|\^A\^B')
