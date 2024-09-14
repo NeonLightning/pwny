@@ -1,4 +1,5 @@
-#goto openweathermap.org and get an api key and cityid.
+# goto openweathermap.org and get an api key and cityid.
+# gps requires gpsdeasy to be installed
 #main.plugins.weather2pwn.enabled = true # enable plugin weather2pwn
 #main.plugins.weather2pwn.log = False # log the weather data
 #main.plugins.weather2pwn.cityid = "CITY_ID" # set the cityid
