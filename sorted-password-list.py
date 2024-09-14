@@ -7,9 +7,11 @@
 # main.plugins.sorted-password-list.keep_qr = True or False
 # this will limit the fields displayed in webui to the ones chosen
 # main.plugins.sorted-password-list.fields = ['ssid', 'bssid', 'password', 'origin', 'gps', 'strength']
+# this will set a custom position (X, Y)
+# main.plugins.sorted-password-list.position = "0,93"
 # you can display a qr code for each password
 # main.plugins.sorted-password-list.qr_display = True or False
-# you will need to sudo apt install python3-qrcode or sudo pip install qrcode(pip install only on older versions of pwnagotchi)
+# you will need to sudo apt install python3-qrcode or sudo pip install qrcode (pip install only on older versions of pwnagotchi)
 
 import logging, os, json, re, pwnagotchi, tempfile
 from pwnagotchi.ui.components import LabeledValue
