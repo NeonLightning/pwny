@@ -1,12 +1,11 @@
 #goto openweathermap.org and get an api key and cityid.
 #main.plugins.weather2pwn.enabled = true # enable plugin weather2pwn
 #main.plugins.weather2pwn.log = False # log the weather data
-#main.plugins.weather2pwn.fetch_interval = 3600 # how often to fetch the weather data
 #main.plugins.weather2pwn.cityid = "CITY_ID" # set the cityid
 #main.plugins.weather2pwn.getbycity = false # get the weather data from gps or cityid by default(gps falls back to cityid if not available)
 #main.plugins.weather2pwn.api_key = "API_KEY" # openweathermap.org api key
-#main.plugins.weather2pwn.gps = "/dev/ttyACM0" # gps device entry point
 #main.plugins.weather2pwn.decimal = "true" # include 2 decimal places for the temperature
+#main.plugins.weather2pwn.units = "c" or "f" to determine celsius or fahrenheit
 #main.plugins.weather2pwn.displays = [ "city", "temp", "sky", ] # display these values on the screen
 
 import socket, json, requests, logging, os, time, toml, subprocess, datetime
@@ -17,32 +16,30 @@ import pwnagotchi.plugins as plugins
 
 class Weather2Pwn(plugins.Plugin):
     __author__ = 'NeonLightning'
-    __version__ = '2.0.2'
+    __version__ = '2.0.3'
     __license__ = 'GPL3'
     __description__ = 'Weather display from gps data or city id, with optional logging'
 
     def __init__(self):
         self.config_path = '/etc/pwnagotchi/config.toml'
-        self.check_and_update_config('main.plugins.weather2pwn.fetch_interval', '3600')
         self.check_and_update_config('main.plugins.weather2pwn.api_key', '""')
         self.check_and_update_config('main.plugins.weather2pwn.getbycity', 'false')
         self.check_and_update_config('main.plugins.weather2pwn.cityid', '""')
-        self.check_and_update_config('main.plugins.weather2pwn.gps', '"/dev/ttyUSB0"')
         self.check_and_update_config('main.plugins.weather2pwn.log', 'false')
         self.check_and_update_config('main.plugins.weather2pwn.decimal', 'true')
+        self.check_and_update_config('main.plugins.weather2pwn.units', '"c"')
         self.check_and_update_config('main.plugins.weather2pwn.displays', '[ "city", "temp", "sky", ]')
         try:
             with open(self.config_path, 'r') as f:
                 config = toml.load(f)
                 self.displays = config['main']['plugins']['weather2pwn']['displays']
-                self.fetch_interval = config['main']['plugins']['weather2pwn']['fetch_interval']
+                self.units = config['main']['plugins']['weather2pwn']['units']
                 self.decimal = config['main']['plugins']['weather2pwn']['decimal']
                 self.decimal = self.decimal in [True, 'true', 'True']
                 self.api_key = config['main']['plugins']['weather2pwn']['api_key']
                 self.getbycity = config['main']['plugins']['weather2pwn']['getbycity']
                 self.getbycity = self.getbycity in [True, 'true', 'True']
                 self.city_id = config['main']['plugins']['weather2pwn']['cityid']
-                self.gps_device = config['main']['plugins']['weather2pwn']['gps']
                 self.weather_log = config['main']['plugins']['weather2pwn']['log']
                 self.weather_log = self.weather_log in [True, 'true', 'True']
                 self.language = config['main']['lang']
@@ -64,9 +61,13 @@ class Weather2Pwn(plugins.Plugin):
         else:
             self.logged_lat, self.logged_long = 0, 0
         self.last_fetch_time = 0
-        self.inetcount = 0
+        self.fetch_interval = 1800
+        self.inetcount = 3
         self.weather_data = {}
         self.current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+        
+    def on_ready(self, agent):
+        self._update_weather()
 
     def _is_internet_available(self):
         try:
@@ -78,14 +79,13 @@ class Weather2Pwn(plugins.Plugin):
     def ensure_gpsd_running(self):
         try:
             result = subprocess.run(['pgrep', '-x', 'gpsd'], stdout=subprocess.PIPE)
-            if result.returncode != 0:
-                logging.info("[Weather2Pwn] Starting gpsd...")
-                subprocess.run(['sudo', 'gpsd', self.gps_device, '-F', '/var/run/gpsd.sock'])
-                time.sleep(2)
+            if result.returncode != 0 or result.returncode != None:
+                return True
+            else:
+                return False
         except Exception as e:
             logging.exception(f"[Weather2Pwn] Error ensuring gpsd is running: {e}")
             return False
-        return True
 
     def get_weather_by_city_id(self, lang):
         try:
@@ -109,25 +109,28 @@ class Weather2Pwn(plugins.Plugin):
     def get_gps_coordinates(self):
         if not self.ensure_gpsd_running():
             return 0, 0
-        try:
-            gpsd_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            gpsd_socket.connect(('localhost', 2947))
-            gpsd_socket.sendall(b'?WATCH={"enable":true,"json":true}')
-            while True:
+        else:
+            try:
+                gpsd_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                gpsd_socket.connect(('localhost', 2947))
+                gpsd_socket.sendall(b'?WATCH={"enable":true,"json":true}\n')
+                time.sleep(2)
                 data = gpsd_socket.recv(4096).decode('utf-8')
                 for line in data.splitlines():
                     try:
                         report = json.loads(line)
                         if report['class'] == 'TPV' and 'lat' in report and 'lon' in report:
                             return report['lat'], report['lon']
-                        else:
-                            logging.info('[Weather2Pwn] no gps data found')
-                            return 0, 0
                     except json.JSONDecodeError:
+                        logging.warning('[Weather2Pwn] Failed to decode JSON response.')
                         return 0, 0
-        except Exception as e:
-            logging.exception(f"[Weather2Pwn] Error getting GPS coordinates: {e}")
-            return 0, 0
+                logging.info('[Weather2Pwn] No GPS data found.')
+                return 0, 0
+            except Exception as e:
+                logging.exception(f"[Weather2Pwn] Error getting GPS coordinates: {e}")
+                return 0, 0
+            finally:
+                gpsd_socket.close()
 
     def get_weather_by_gps(self, lat, lon, api_key, lang):
         try:
@@ -225,51 +228,11 @@ class Weather2Pwn(plugins.Plugin):
             ui.add_element('weather', LabeledValue(color=BLACK, label='Sky :', value='',
                                                     position=pos3,
                                                     label_font=fonts.Small, text_font=fonts.Small))
-        if self._is_internet_available():
-            try:
-                if self.getbycity == False:
-                    latitude, longitude = self.get_gps_coordinates()
-                    if latitude != 0 and longitude != 0:
-                        self.weather_data = self.get_weather_by_gps(latitude, longitude, self.api_key, self.language)
-                        self.weather_data["name"] = self.weather_data["name"] + " *GPS*"
-                        logging.info("[Weather2Pwn] weather setup by gps initially")
-                    else:
-                        self.weather_data = self.get_weather_by_city_id(self.language)
-                        logging.info("[Weather2Pwn] weather setup by city initially")
-                else:
-                    self.weather_data = self.get_weather_by_city_id(self.language)
-                    logging.info("[Weather2Pwn] weather setup by city initially")
-                if os.path.exists('/tmp/weather2pwn_data.json'):
-                    with open('/tmp/weather2pwn_data.json', 'r') as f:
-                        self.weather_data = json.load(f)
-                if self.weather_data:
-                    if "name" in self.weather_data:
-                        city_name = self.weather_data["name"]
-                        ui.set('city', f"{city_name}")
-                    if "main" in self.weather_data and "feels_like" in self.weather_data["main"]:
-                        feels_like = self.weather_data["main"]["feels_like"]
-                        if not self.decimal:
-                            feels_like = round(feels_like)
-                        ui.set('feels_like', f"{feels_like}°C")
-                    if "weather" in self.weather_data and len(self.weather_data["weather"]) > 0:
-                        main_weather = self.weather_data["weather"][0]["main"]
-                        ui.set('weather', f"{main_weather}")
-                    logging.info("[Weather2Pwn] storing on startup...")
-                    self.store_weather_data()
-            except Exception as e:
-                logging.exception(f"[Weather2pwn] An error occurred {e}")
-                logging.exception(f"[Weather2pwn] An error occurred2 {self.weather_data}")
-        else:
-            current_time = time.time()
-            if current_time - self.last_fetch_time >= self.fetch_interval:
-                if 'city' in self.displays:
-                    ui.set('city', 'No Network')
-                if 'temp' in self.displays:
-                    ui.set('feels_like', '')
-                if 'sky' in self.displays:
-                    ui.set('weather', '')
 
     def on_internet_available(self, agent):
+        self._update_weather()
+    
+    def _update_weather(self):
         current_time = time.time()
         latitude, longitude = self.get_gps_coordinates()
         if current_time - self.last_fetch_time >= self.fetch_interval or abs(self.logged_lat - latitude) >= 0.005 or abs(self.logged_long - longitude) > 0.005:
@@ -314,7 +277,12 @@ class Weather2Pwn(plugins.Plugin):
                     if 'temp' in self.displays:
                         if not self.decimal:
                             feels_like = round(feels_like)
-                        ui.set('feels_like', f"{feels_like}°C")
+                        if self.units == "c":
+                            ui.set('feels_like', f"{feels_like}°C")
+                        elif self.units == "f":
+                            feels_like = (feels_like * 9/5) + 32
+                            feels_like = round(feels_like)
+                            ui.set('feels_like', f"{feels_like}°F")
                 if "weather" in self.weather_data and len(self.weather_data["weather"]) > 0:
                     main_weather = self.weather_data["weather"][0]["main"]
                     if 'sky' in self.displays:
