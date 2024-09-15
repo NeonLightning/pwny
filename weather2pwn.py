@@ -76,7 +76,7 @@ class Weather2Pwn(plugins.Plugin):
 
     def _is_internet_available(self):
         try:
-            socket.create_connection(("www.google.com", 80))
+            socket.create_connection(("www.google.com", 80), timeout=3)
             return True
         except OSError:
             return False
@@ -238,7 +238,7 @@ class Weather2Pwn(plugins.Plugin):
         current_time = time.time()
         latitude, longitude = self.get_gps_coordinates()
         if (current_time - self.last_fetch_time) > (self.fetch_interval / 4):
-            logging.info(f"[Weather2Pwn] Latitude diff: {abs(self.logged_lat - latitude)}, Longitude diff: {abs(self.logged_long - longitude)}, inetcount: {self.inetcount}, last: {self.last_fetch_time} current: {current_time} fetch: {self.fetch_interval} diff: {current_time - self.last_fetch_time - self.fetch_interval}")
+            logging.debug(f"[Weather2Pwn] Latitude diff: {abs(self.logged_lat - latitude)}, Longitude diff: {abs(self.logged_long - longitude)}, inetcount: {self.inetcount}, last: {self.last_fetch_time} current: {current_time} fetch: {self.fetch_interval} diff: {current_time - self.last_fetch_time - self.fetch_interval}")
         if (self.readycheck or current_time - self.last_fetch_time >= self.fetch_interval or abs(self.logged_lat - latitude) >= 0.01 or abs(self.logged_long - longitude) > 0.01):
             if abs(self.logged_lat - latitude) >= 0.005 or abs(self.logged_long - longitude) >= 0.005 or (current_time - self.last_fetch_time >= self.fetch_interval):
                 self.inetcount += 1
@@ -277,6 +277,7 @@ class Weather2Pwn(plugins.Plugin):
             if self.readycheck and self.weather_data:
                 logging.info('[Weather2Pwn] skipping first check')
             else:
+                current_time = time.time()
                 if (current_time - self.last_fetch_time) > (self.fetch_interval / 8):
                     self._update_weather()
             if os.path.exists('/tmp/weather2pwn_data.json'):
