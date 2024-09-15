@@ -63,7 +63,7 @@ class Weather2Pwn(plugins.Plugin):
             self.logged_lat, self.logged_long = 0, 0
         self.last_fetch_time = time.time()
         self.inetcount = 3
-        self.fetch_interval = 120
+        self.fetch_interval = 1800
         self.weather_data = {}
         self.current_date = datetime.datetime.now().strftime("%Y-%m-%d")
         self.readycheck = False
