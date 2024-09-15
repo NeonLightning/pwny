@@ -17,7 +17,7 @@ import pwnagotchi.plugins as plugins
 
 class Weather2Pwn(plugins.Plugin):
     __author__ = 'NeonLightning'
-    __version__ = '2.0.4'
+    __version__ = '2.1.0'
     __license__ = 'GPL3'
     __description__ = 'Weather display from gps data or city id, with optional logging'
 
@@ -129,7 +129,7 @@ class Weather2Pwn(plugins.Plugin):
                     except json.JSONDecodeError:
                         logging.warning('[Weather2Pwn] Failed to decode JSON response.')
                         return 0, 0
-                logging.info('[Weather2Pwn] No GPS data found.')
+                logging.debug('[Weather2Pwn] No GPS data found.')
                 return 0, 0
             except Exception as e:
                 logging.exception(f"[Weather2Pwn] Error getting GPS coordinates: {e}")
@@ -234,19 +234,14 @@ class Weather2Pwn(plugins.Plugin):
                                                     position=pos3,
                                                     label_font=fonts.Small, text_font=fonts.Small))
 
-    def on_internet_available(self, agent):
-        if self.readycheck and self.weather_data:
-            logging.info('[Weather2Pwn] skipping first check')
-        else:
-            self._update_weather()
-        self.readycheck = False
-    
     def _update_weather(self):
         current_time = time.time()
         latitude, longitude = self.get_gps_coordinates()
-        logging.debug(f"[Weather2Pwn] Latitude diff: {abs(self.logged_lat - latitude)}, Longitude diff: {abs(self.logged_long - longitude)}, inetcount: {self.inetcount}, last time: {self.last_fetch_time} current time: {current_time} fetch time: {self.fetch_interval}")
+        if (current_time - self.last_fetch_time) > (self.fetch_interval / 4):
+            logging.info(f"[Weather2Pwn] Latitude diff: {abs(self.logged_lat - latitude)}, Longitude diff: {abs(self.logged_long - longitude)}, inetcount: {self.inetcount}, last: {self.last_fetch_time} current: {current_time} fetch: {self.fetch_interval} diff: {current_time - self.last_fetch_time - self.fetch_interval}")
         if (self.readycheck or current_time - self.last_fetch_time >= self.fetch_interval or abs(self.logged_lat - latitude) >= 0.01 or abs(self.logged_long - longitude) > 0.01):
-            self.inetcount += 1
+            if abs(self.logged_lat - latitude) >= 0.005 or abs(self.logged_long - longitude) >= 0.005 or (current_time - self.last_fetch_time >= self.fetch_interval):
+                self.inetcount += 1
             try:
                 if abs(self.logged_lat - latitude) >= 0.01 or abs(self.logged_long - longitude) >= 0.01 or self.inetcount >= 2:
                     if self.getbycity == False:
@@ -279,6 +274,11 @@ class Weather2Pwn(plugins.Plugin):
 
     def on_ui_update(self, ui):
         if self._is_internet_available():
+            if self.readycheck and self.weather_data:
+                logging.info('[Weather2Pwn] skipping first check')
+            else:
+                if (current_time - self.last_fetch_time) > (self.fetch_interval / 8):
+                    self._update_weather()
             if os.path.exists('/tmp/weather2pwn_data.json'):
                 with open('/tmp/weather2pwn_data.json', 'r') as f:
                     self.weather_data = json.load(f)
@@ -311,6 +311,7 @@ class Weather2Pwn(plugins.Plugin):
                     ui.set('feels_like', '')
                 if 'sky' in self.displays:
                     ui.set('weather', '')
+        self.readycheck = False
 
     def on_unload(self, ui):
         with ui._lock:
