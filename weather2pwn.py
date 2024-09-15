@@ -17,7 +17,7 @@ import pwnagotchi.plugins as plugins
 
 class Weather2Pwn(plugins.Plugin):
     __author__ = 'NeonLightning'
-    __version__ = '2.1.0'
+    __version__ = '2.1.1'
     __license__ = 'GPL3'
     __description__ = 'Weather display from gps data or city id, with optional logging'
 
@@ -61,14 +61,15 @@ class Weather2Pwn(plugins.Plugin):
                         self.logged_lat, self.logged_long = 0, 0
         else:
             self.logged_lat, self.logged_long = 0, 0
-        self.last_fetch_time = 0
+        self.last_fetch_time = time.time()
         self.inetcount = 3
-        self.fetch_interval = 1800
+        self.fetch_interval = 120
         self.weather_data = {}
         self.current_date = datetime.datetime.now().strftime("%Y-%m-%d")
         self.readycheck = False
         self.running = False
         self.checkgps_time = 0
+        self.ui_update_time = time.time()
         
     def on_ready(self, agent):
         self.readycheck = True
@@ -240,12 +241,10 @@ class Weather2Pwn(plugins.Plugin):
 
     def _update_weather(self):
         current_time = time.time()
-        if (current_time - self.checkgps_time) >= 60:
+        if (current_time - self.checkgps_time) >= (self.fetch_interval / 2):
             latitude, longitude = self.get_gps_coordinates()
+            logging.debug(f"[Weather2Pwn] Latitude diff: {abs(self.logged_lat - latitude)}, Longitude diff: {abs(self.logged_long - longitude)}, inetcount: {self.inetcount}, last: {self.checkgps_time} current: {current_time} fetch: {self.fetch_interval} gpstime: {self.checkgps_time} diff: {current_time - self.checkgps_time}")
             self.checkgps_time = current_time
-        #interval = self.fetch_interval / 2
-        #if current_time - self.last_fetch_time >= interval:
-        #    logging.info(f"[Weather2Pwn] Latitude diff: {abs(self.logged_lat - latitude)}, Longitude diff: {abs(self.logged_long - longitude)}, inetcount: {self.inetcount}, last: {self.last_fetch_time} current: {current_time} fetch: {self.fetch_interval} diff: {current_time - self.last_fetch_time - self.fetch_interval}")
         if (self.readycheck or current_time - self.last_fetch_time >= self.fetch_interval or abs(self.logged_lat - latitude) >= 0.01 or abs(self.logged_long - longitude) > 0.01):
             if abs(self.logged_lat - latitude) >= 0.005 or abs(self.logged_long - longitude) >= 0.005 or (current_time - self.last_fetch_time >= self.fetch_interval):
                 self.inetcount += 1
@@ -287,11 +286,11 @@ class Weather2Pwn(plugins.Plugin):
                 if self.readycheck and self.weather_data:
                     logging.info('[Weather2Pwn] skipping first check')
                 else:
-                    #current_time = time.time()
-                    #interval = self.fetch_interval
-                    #if current_time - self.last_fetch_time >= interval:
-                    #    logging.info(f"[Weather2Pwn] ui check inetcount: {self.inetcount}, interval / 4: {self.fetch_interval / 4}, last: {self.last_fetch_time} current: {current_time} fetch: {self.fetch_interval} diff: {current_time - self.last_fetch_time - self.fetch_interval}")
-                    self._update_weather()
+                    current_time = time.time()
+                    if current_time - self.ui_update_time >= (self.fetch_interval / 4):
+                        logging.debug(f"[Weather2Pwn] ui check inetcount: {self.inetcount}, last: {self.last_fetch_time} current: {current_time} fetch: {self.ui_update_time} diff: {current_time - self.ui_update_time}")
+                        self.ui_update_time = current_time
+                        self._update_weather()
                 if os.path.exists('/tmp/weather2pwn_data.json'):
                     with open('/tmp/weather2pwn_data.json', 'r') as f:
                         self.weather_data = json.load(f)
