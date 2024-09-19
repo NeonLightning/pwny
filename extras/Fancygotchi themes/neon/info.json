@@ -1,0 +1,18 @@
+{
+  "author": "NeonLightning",
+  "version": "1.0.0",
+  "resolutions": "250x122",
+  "display": "waveshare vX",
+  "plugins": [
+    "weather2pwn",
+    "neonlightning's clock",
+    "memtemp",
+    "gpsdeasy",
+    "IPDisplay",
+    "internet-conection",
+    "auto_tune",
+    "modded_more_uptime",
+    "sorted-password-list"
+  ],
+  "notes": ""
+}
