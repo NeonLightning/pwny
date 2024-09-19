@@ -1,5 +1,5 @@
 {
-  "author": "NeonLightning",
+  "author": "<a href='https://github.com/NeonLightning/pwny'>NeonLightning</a>",
   "version": "1.0.0",
   "resolutions": "250x122",
   "display": "waveshare vX",
@@ -14,5 +14,5 @@
     "modded_more_uptime",
     "sorted-password-list"
   ],
-  "notes": ""
+  "notes": "weather2pwn.displays temp and gpsdeasy.fields lat lon"
 }

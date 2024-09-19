@@ -14,11 +14,16 @@ label_spacing = 5
 cursor = "❤"
 friend_bars = "|"
 friend_no_bars = ""
-main_text_color = [ "lime",]
+main_text_color = [ "red",]
 color_mode = [ "P", "P",]
 boot_animation = true
 boot_min_loops = 2
 boot_total_duration = 3
+
+[theme.dev]
+refresh = -1
+log = "True"
+debug = false
 
 [theme.widget.channel]
 position = [ 0, 0,]
