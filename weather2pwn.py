@@ -280,13 +280,13 @@ class Weather2Pwn(plugins.Plugin):
                 logging.exception(f"[Weather2pwn] An error occurred2 {self.weather_data}")
             self.readycheck = False
 
-    def on_wait(self):
+    def on_wait(self, agent, t):
         if self.readycheck and self.weather_data:
             logging.info('[Weather2Pwn] skipping first check')
         else:
             current_time = time.time()
             if current_time - self.ui_update_time >= (self.fetch_interval / 4):
-                logging.debug(f"[Weather2Pwn] ui check inetcount: {self.inetcount}, last: {self.last_fetch_time} current: {current_time} fetch: {self.ui_update_time} diff: {current_time - self.ui_update_time}")
+                logging.debug(f"[Weather2Pwn] wait check inetcount: {self.inetcount}, last: {self.last_fetch_time} current: {current_time} fetch: {self.ui_update_time} diff: {current_time - self.ui_update_time}")
                 self.ui_update_time = current_time
                 self._update_weather()
                 self.readycheck = False
