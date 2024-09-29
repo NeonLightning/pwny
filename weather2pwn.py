@@ -240,45 +240,46 @@ class Weather2Pwn(plugins.Plugin):
                                                     label_font=fonts.Small, text_font=fonts.Small))
 
     def _update_weather(self):
-        current_time = time.time()
-        if (current_time - self.checkgps_time) >= (self.fetch_interval / 2):
-            latitude, longitude = self.get_gps_coordinates()
-            logging.debug(f"[Weather2Pwn] Latitude diff: {abs(self.logged_lat - latitude)}, Longitude diff: {abs(self.logged_long - longitude)}, inetcount: {self.inetcount}, last: {self.checkgps_time} current: {current_time} fetch: {self.fetch_interval} gpstime: {self.checkgps_time} diff: {current_time - self.checkgps_time}")
-            self.checkgps_time = current_time
-        if (self.readycheck or current_time - self.last_fetch_time >= self.fetch_interval or abs(self.logged_lat - latitude) >= 0.01 or abs(self.logged_long - longitude) > 0.01):
-            if abs(self.logged_lat - latitude) >= 0.005 or abs(self.logged_long - longitude) >= 0.005 or (current_time - self.last_fetch_time >= self.fetch_interval):
-                self.inetcount += 1
-            try:
-                if abs(self.logged_lat - latitude) >= 0.01 or abs(self.logged_long - longitude) >= 0.01 or self.inetcount >= 2:
-                    if self.getbycity == False:
-                        latitude, longitude = self.get_gps_coordinates()
-                        if latitude != 0 and longitude != 0:
-                            logging.info(f"[Weather2Pwn] GPS data found. {latitude}, {longitude}")
-                            self.weather_data = self.get_weather_by_gps(latitude, longitude, self.api_key, self.language)
-                            self.weather_data["name"] = self.weather_data["name"] + " *GPS*"
-                            logging.info("[Weather2Pwn] weather setup by gps")
-                            self.last_fetch_time = current_time
+        if self._is_internet_available():
+            current_time = time.time()
+            if (current_time - self.checkgps_time) >= (self.fetch_interval / 2):
+                latitude, longitude = self.get_gps_coordinates()
+                logging.debug(f"[Weather2Pwn] Latitude diff: {abs(self.logged_lat - latitude)}, Longitude diff: {abs(self.logged_long - longitude)}, inetcount: {self.inetcount}, last: {self.checkgps_time} current: {current_time} fetch: {self.fetch_interval} gpstime: {self.checkgps_time} diff: {current_time - self.checkgps_time}")
+                self.checkgps_time = current_time
+            if (self.readycheck or current_time - self.last_fetch_time >= self.fetch_interval or abs(self.logged_lat - latitude) >= 0.01 or abs(self.logged_long - longitude) > 0.01):
+                if abs(self.logged_lat - latitude) >= 0.005 or abs(self.logged_long - longitude) >= 0.005 or (current_time - self.last_fetch_time >= self.fetch_interval):
+                    self.inetcount += 1
+                try:
+                    if abs(self.logged_lat - latitude) >= 0.01 or abs(self.logged_long - longitude) >= 0.01 or self.inetcount >= 2:
+                        if self.getbycity == False:
+                            latitude, longitude = self.get_gps_coordinates()
+                            if latitude != 0 and longitude != 0:
+                                logging.info(f"[Weather2Pwn] GPS data found. {latitude}, {longitude}")
+                                self.weather_data = self.get_weather_by_gps(latitude, longitude, self.api_key, self.language)
+                                self.weather_data["name"] = self.weather_data["name"] + " *GPS*"
+                                logging.info("[Weather2Pwn] weather setup by gps")
+                                self.last_fetch_time = current_time
+                            else:
+                                logging.info(f"[Weather2Pwn] GPS data not found.")
+                                self.weather_data = self.get_weather_by_city_id(self.language)
+                                logging.info("[Weather2Pwn] weather setup by city")
+                                self.last_fetch_time = current_time
                         else:
-                            logging.info(f"[Weather2Pwn] GPS data not found.")
                             self.weather_data = self.get_weather_by_city_id(self.language)
                             logging.info("[Weather2Pwn] weather setup by city")
                             self.last_fetch_time = current_time
-                    else:
-                        self.weather_data = self.get_weather_by_city_id(self.language)
-                        logging.info("[Weather2Pwn] weather setup by city")
-                        self.last_fetch_time = current_time
-                    if os.path.exists('/tmp/weather2pwn_data.json'):
-                        with open('/tmp/weather2pwn_data.json', 'r') as f:
-                            self.weather_data = json.load(f)
-                    if self.weather_data:
-                        self.store_weather_data()
-                        self.logged_lat = latitude
-                        self.logged_long = longitude
-                        self.inetcount = 0
-            except Exception as e:
-                logging.exception(f"[Weather2pwn] An error occurred {e}")
-                logging.exception(f"[Weather2pwn] An error occurred2 {self.weather_data}")
-            self.readycheck = False
+                        if os.path.exists('/tmp/weather2pwn_data.json'):
+                            with open('/tmp/weather2pwn_data.json', 'r') as f:
+                                self.weather_data = json.load(f)
+                        if self.weather_data:
+                            self.store_weather_data()
+                            self.logged_lat = latitude
+                            self.logged_long = longitude
+                            self.inetcount = 0
+                except Exception as e:
+                    logging.exception(f"[Weather2pwn] An error occurred {e}")
+                    logging.exception(f"[Weather2pwn] An error occurred2 {self.weather_data}")
+                self.readycheck = False
 
     def on_wait(self, agent, t):
         if self.readycheck and self.weather_data:
