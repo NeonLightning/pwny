@@ -2,6 +2,8 @@
 # gps requires gpsdeasy to be installed
 #main.plugins.weather2pwn.enabled = true # enable plugin weather2pwn
 #main.plugins.weather2pwn.log = False # log the weather data
+#main.plugins.weather2pwn.gps_loc = "/dev/ttyACM0" or whatever tty your gps is
+# will be updated when gpsdeasy is updated
 #main.plugins.weather2pwn.cityid = "CITY_ID" # set the cityid
 #main.plugins.weather2pwn.getbycity = false # get the weather data from gps or cityid by default(gps falls back to cityid if not available)
 #main.plugins.weather2pwn.api_key = "API_KEY" # openweathermap.org api key
@@ -24,6 +26,7 @@ class Weather2Pwn(plugins.Plugin):
     def __init__(self):
         self.config_path = '/etc/pwnagotchi/config.toml'
         self.check_and_update_config('main.plugins.weather2pwn.api_key', '""')
+        self.check_and_update_config('main.plugins.weather2pwn.gps_loc', '/dev/ttyACM0')
         self.check_and_update_config('main.plugins.weather2pwn.getbycity', 'false')
         self.check_and_update_config('main.plugins.weather2pwn.cityid', '""')
         self.check_and_update_config('main.plugins.weather2pwn.log', 'false')
@@ -37,6 +40,7 @@ class Weather2Pwn(plugins.Plugin):
                 self.units = config['main']['plugins']['weather2pwn']['units']
                 self.decimal = config['main']['plugins']['weather2pwn']['decimal']
                 self.decimal = self.decimal in [True, 'true', 'True']
+                self.gps_loc = config['main']['plugins']['weather2pwn']['gps_loc']
                 self.api_key = config['main']['plugins']['weather2pwn']['api_key']
                 self.getbycity = config['main']['plugins']['weather2pwn']['getbycity']
                 self.getbycity = self.getbycity in [True, 'true', 'True']
@@ -74,6 +78,7 @@ class Weather2Pwn(plugins.Plugin):
     def on_ready(self, agent):
         self.readycheck = True
         time.sleep(5)
+        self.set_gps_device()
         self._update_weather()
         time.sleep(5)
         self.running = True
@@ -85,7 +90,17 @@ class Weather2Pwn(plugins.Plugin):
             return True
         except OSError:
             return False
-        
+
+    def configure_gpsd(self):
+        try:
+            subprocess.run(["sudo", "systemctl", "stop", "gpsd"], check=True)
+            logging.info(f"Stopped any running gpsd instance.")
+            subprocess.run(["sudo", "gpsd", self.gps_loc, "-F", "/var/run/gpsd.sock"], check=True)
+            logging.info(f"Started gpsd with device {self.gps_loc}.")
+            
+        except subprocess.CalledProcessError as e:
+            logging.error(f"Failed to configure gpsd: {e}")
+
     def ensure_gpsd_running(self):
         try:
             result = subprocess.run(['pgrep', '-x', 'gpsd'], stdout=subprocess.PIPE)
@@ -115,6 +130,34 @@ class Weather2Pwn(plugins.Plugin):
                 os.remove('/tmp/weather2pwn_data.json')
             logging.error(f"[Weather2Pwn] Exception fetching weather data: {e}")
             return None
+        
+    def set_gps_device(self):
+        try:
+            config_file = '/etc/default/gpsd'
+            if not os.path.exists(config_file):
+                logging.error(f"[Weather2Pwn] Configuration file {config_file} not found.")
+                return False
+            with open(config_file, 'r') as file:
+                lines = file.readlines()
+            device_set = False
+            with open(config_file, 'w') as file:
+                for line in lines:
+                    if line.startswith('DEVICES'):
+                        if f'DEVICES="{self.gps_loc}"' in line:
+                            logging.info(f"[Weather2Pwn] DEVICES is already set to {self.gps_loc}, skipping update.")
+                            device_set = True
+                            file.write(line)
+                        else:
+                            file.write(f'DEVICES="{self.gps_loc}"\n')
+                    else:
+                        file.write(line)
+            if not device_set:
+                subprocess.run(['sudo', 'systemctl', 'restart', 'gpsd'], check=True)
+                logging.info(f"[Weather2Pwn] GPS device set to {self.gps_loc} and gpsd service restarted.")
+            return True
+        except Exception as e:
+            logging.exception(f"[Weather2Pwn] Error setting GPS device: {e}")
+            return False
 
     def get_gps_coordinates(self):
         if not self.ensure_gpsd_running():
@@ -125,17 +168,19 @@ class Weather2Pwn(plugins.Plugin):
                 gpsd_socket.connect(('localhost', 2947))
                 gpsd_socket.sendall(b'?WATCH={"enable":true,"json":true}\n')
                 time.sleep(2)
-                data = gpsd_socket.recv(4096).decode('utf-8')
-                for line in data.splitlines():
-                    try:
-                        report = json.loads(line)
-                        if report['class'] == 'TPV' and 'lat' in report and 'lon' in report:
-                            return report['lat'], report['lon']
-                    except json.JSONDecodeError:
-                        logging.warning('[Weather2Pwn] Failed to decode JSON response.')
-                        return 0, 0
-                logging.debug('[Weather2Pwn] No GPS data found.')
-                return 0, 0
+                start_time = time.time()
+                while time.time() - start_time < 3:
+                    data = gpsd_socket.recv(4096).decode('utf-8')
+                    for line in data.splitlines():
+                        try:
+                            report = json.loads(line)
+                            if report['class'] == 'TPV' and 'lat' in report and 'lon' in report:
+                                return report['lat'], report['lon']
+                        except json.JSONDecodeError:
+                            logging.warning('[Weather2Pwn] Failed to decode JSON response.')
+                            continue
+                    logging.debug('[Weather2Pwn] No GPS data found.')
+                    return 0, 0
             except Exception as e:
                 logging.exception(f"[Weather2Pwn] Error getting GPS coordinates: {e}")
                 return 0, 0
@@ -217,6 +262,10 @@ class Weather2Pwn(plugins.Plugin):
         logging.info("[Weather2Pwn] loading")
         if os.path.exists('/tmp/weather2pwn_data.json'):
             os.remove('/tmp/weather2pwn_data.json')
+        try:
+            self.configure_gpsd()
+        except Exception as e:
+            logging.exception(f"[Weather2Pwn] Error configuring GPSd: {e}")
         logging.info("[Weather2Pwn] Plugin loaded.")
 
     def on_agent(self, agent) -> None:
