@@ -14,18 +14,18 @@ from pwnagotchi.ui.view import BLACK
 
 class BTLog(plugins.Plugin):
     __author__ = 'NeonLightning'
-    __version__ = '1.0.4'
+    __version__ = '1.0.5'
     __license__ = 'GPL3'
     __description__ = 'Logs and displays a count of bluetooth devices seen.'
 
     def on_loaded(self):
         self.gps = self.options.get('gps', False)
         self.display = self.options.get('display', False)
-        self.gps_track = self.options.get('gps_track', True)
+        self.gps_track = self.options.get('gps_track', False)
         self.id_only = self.options.get('id_only', True)
         self.count = 0
-        self.interim_file = '/root/.btinterim.log'
-        self.output = '/root/bluetooth.log'
+        self.interim_file = '/tmp/.btinterim.log'
+        self.output = '/home/pi/bluetooth.log'
         try:
             with open(self.output, 'r') as log_file:
                 if isinstance(log_file, io.TextIOBase):
@@ -193,25 +193,24 @@ class BTLog(plugins.Plugin):
                     mac_address = match.group(1)
                     device_name = match.group(2)
                     entry = f"{device_name} {mac_address}"
+                    latitude, longitude = self.get_gps_coordinates()
                     if not self.is_duplicate(entry, interim_file, latitude, longitude) and (not self.id_only or not hex_pattern.search(device_name)):
-                        latitude, longitude = self.get_gps_coordinates()
-                        if not self.is_duplicate(entry, interim_file, latitude, longitude) and (not self.id_only or not hex_pattern.search(device_name)):
-                            self.count += 1
-                            log_entry = f"{entry}"
-                            logging.info(f"[BT-Log] {log_entry}")
-                            if self.gps:
-                                if latitude is not None and longitude is not None:
-                                    log_entry = f"{log_entry}: {latitude}, {longitude}\n"
-                                else:
-                                    log_entry = f"{entry}: 0, 0\n"
+                        self.count += 1
+                        log_entry = f"{entry}"
+                        logging.info(f"[BT-Log] {log_entry}")
+                        if self.gps:
+                            if latitude is not None and longitude is not None:
+                                log_entry = f"{log_entry}: {latitude}, {longitude}\n"
                             else:
-                                log_entry = f"{entry}\n"
-                            log_file.write(log_entry)
-                            log_file.flush()
-                            with open(interim_file, 'a') as interim:
-                                interim.write(f"{entry} {latitude} {longitude}\n")
-                                interim.flush()
-                            self.organize_bluetooth_log(output_file)
+                                log_entry = f"{entry}: 0, 0\n"
+                        else:
+                            log_entry = f"{entry}\n"
+                        log_file.write(log_entry)
+                        log_file.flush()
+                        with open(interim_file, 'a') as interim:
+                            interim.write(f"{entry} {latitude} {longitude}\n")
+                            interim.flush()
+                        self.organize_bluetooth_log(output_file)
 
     def is_duplicate(self, entry, interim_file, latitude, longitude):
         try:
