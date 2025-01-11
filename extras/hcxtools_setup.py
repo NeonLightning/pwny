@@ -10,6 +10,7 @@ extracted_folder = '/tmp/hcxtools_extraction/'
 os.makedirs(extracted_folder, exist_ok=True)
 
 try:
+    subprocess.run(['sudo', 'apt', 'update'], check=True)
     subprocess.run(['sudo', 'apt', '-y', 'install', 'libcurl4-openssl-dev'], check=True)
     response = requests.get(url)
     response.raise_for_status()
