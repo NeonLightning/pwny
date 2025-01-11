@@ -28,7 +28,7 @@ class InetIcon(pwnagotchi.ui.components.Widget):
 
 class InternetConectionPlugin(plugins.Plugin):
     __author__ = 'neonlightning'
-    __version__ = '1.2.2'
+    __version__ = '1.2.3'
     __license__ = 'GPL3'
     __description__ = 'A plugin that displays the Internet connection status on the pwnagotchi display.'
     __name__ = 'InternetConectionPlugin'
@@ -87,13 +87,13 @@ class InternetConectionPlugin(plugins.Plugin):
             logging.info("[Internet Conection] setup icon.")
         except Exception as e:
             logging.error(f"[Internet Conection] Error copying file: {e}")
-            self.invert_status = self.invert()
         logging.info("[Internet Conection] Plugin loaded.")
 
     def on_ui_setup(self, ui):
         if self._is_internet_available():
+            self.invert_status = self.invert()
             try:
-                ui.add_element('connection_status', InetIcon(xy=(0,218), value=self.icon_path, invert=self.invert_status))
+                ui.add_element('connection_status', InetIcon(xy=(0,218), value=self.icon_path))
             except Exception as e:
                 logging.info(f"Error loading {e}")
 
