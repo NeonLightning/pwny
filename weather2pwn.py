@@ -19,7 +19,7 @@ import pwnagotchi.plugins as plugins
 
 class Weather2Pwn(plugins.Plugin):
     __author__ = 'NeonLightning'
-    __version__ = '2.2.3'
+    __version__ = '2.2.4'
     __license__ = 'GPL3'
     __description__ = 'Weather display from gps data or city id, with optional logging'
 
@@ -67,7 +67,7 @@ class Weather2Pwn(plugins.Plugin):
             self.logged_lat, self.logged_long = 0, 0
         self.last_fetch_time = time.time()
         self.inetcount = 3
-        self.fetch_interval = 1800
+        self.fetch_interval = 600
         self.weather_data = {}
         self.current_date = datetime.datetime.now().strftime("%Y-%m-%d")
         self.readycheck = False
@@ -97,12 +97,12 @@ class Weather2Pwn(plugins.Plugin):
     def configure_gpsd(self):
         try:
             subprocess.run(["sudo", "systemctl", "stop", "gpsd"], check=True)
-            logging.info(f"Stopped any running gpsd instance.")
+            logging.info(f"[Weather2Pwn] Stopped any running gpsd instance.")
             subprocess.run(["sudo", "gpsd", self.gps_loc, "-F", "/var/run/gpsd.sock"], check=True)
-            logging.info(f"Started gpsd with device {self.gps_loc}.")
+            logging.info(f"[Weather2Pwn] Started gpsd with device {self.gps_loc}.")
             
         except subprocess.CalledProcessError as e:
-            logging.error(f"Failed to configure gpsd: {e}")
+            logging.error(f"[Weather2Pwn] Failed to configure gpsd: {e}")
 
     def ensure_gpsd_running(self):
         try:
@@ -171,8 +171,7 @@ class Weather2Pwn(plugins.Plugin):
                 gpsd_socket.connect(('localhost', 2947))
                 gpsd_socket.sendall(b'?WATCH={"enable":true,"json":true}\n')
                 time.sleep(2)
-                start_time = time.time()
-                while time.time() - start_time < 3:
+                for _ in range(6):
                     data = gpsd_socket.recv(4096).decode('utf-8')
                     for line in data.splitlines():
                         try:
@@ -182,8 +181,10 @@ class Weather2Pwn(plugins.Plugin):
                         except json.JSONDecodeError:
                             logging.warning('[Weather2Pwn] Failed to decode JSON response.')
                             continue
-                    logging.debug('[Weather2Pwn] No GPS data found.')
-                    return 0, 0
+                    logging.debug('[Weather2Pwn] No GPS data found in this attempt.')
+                    time.sleep(0.5)
+                logging.debug('[Weather2Pwn] No GPS data found.')
+                return 0, 0
             except Exception as e:
                 logging.exception(f"[Weather2Pwn] Error getting GPS coordinates: {e}")
                 return 0, 0
