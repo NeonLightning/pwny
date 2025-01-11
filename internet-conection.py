@@ -87,12 +87,12 @@ class InternetConectionPlugin(plugins.Plugin):
     def on_ui_setup(self, ui):
         if self._is_internet_available():
             try:
-                ui.add_element('connection_status', InetIcon(xy=(225, 101), value=self.icon_path, invert=self.invert_status))
+                ui.add_element('connection_status', InetIcon(xy=(0,218), value=self.icon_path, invert=self.invert_status))
             except Exception as e:
                 logging.info(f"Error loading {e}")
         else:
             try:
-                ui.add_element('connection_status', InetIcon(xy=(225, 101), value=self.icon_off_path, invert=self.invert_status))
+                ui.add_element('connection_status', InetIcon(xy=(0,218), value=self.icon_off_path, invert=self.invert_status))
             except Exception as e:
                 logging.info(f"Error loading {e}")
         ui.add_element('ineticon', components.LabeledValue(color=view.BLACK, label='', value='',
@@ -109,7 +109,7 @@ class InternetConectionPlugin(plugins.Plugin):
                 except KeyError:
                     pass
                 try:
-                    ui.add_element('connection_status', InetIcon(xy=(225, 101), value=icon_path, invert=self.invert_status))
+                    ui.add_element('connection_status', InetIcon(xy=(0,218), value=icon_path, invert=self.invert_status))
                 except Exception as e:
                     logging.error(f"Error updating connection status: {e}")
                     logging.error(traceback.format_exc())

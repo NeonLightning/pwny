@@ -253,7 +253,7 @@ class Weather2Pwn(plugins.Plugin):
                     if abs(self.logged_lat - latitude) >= 0.01 or abs(self.logged_long - longitude) >= 0.01 or self.inetcount >= 2:
                         if self.getbycity == False:
                             latitude, longitude = self.get_gps_coordinates()
-                            if latitude != 0 and longitude != 0:
+                            if latitude != 0 and longitude != 0 or not latitude and longitude:
                                 logging.info(f"[Weather2Pwn] GPS data found. {latitude}, {longitude}")
                                 self.weather_data = self.get_weather_by_gps(latitude, longitude, self.api_key, self.language)
                                 self.weather_data["name"] = self.weather_data["name"] + " *GPS*"
