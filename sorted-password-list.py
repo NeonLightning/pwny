@@ -313,11 +313,11 @@ class SortedPasswordList(plugins.Plugin):
         try:
             lineswpa = []
             linesrc = []
-            if os.path.exists('/root/handshakes/wpa-sec.cracked.potfile'):
-                with open('/root/handshakes/wpa-sec.cracked.potfile', 'r') as file_in:
+            if os.path.exists('/home/pi/handshakes/wpa-sec.cracked.potfile'):
+                with open('/home/pi/handshakes/wpa-sec.cracked.potfile', 'r') as file_in:
                     lineswpa = [(line.strip(), 'wpa-sec.cracked.potfile') for line in file_in.readlines() if line.strip()]
-            if os.path.exists('/root/handshakes/remote_cracking.potfile'):
-                with open('/root/handshakes/remote_cracking.potfile', 'r') as file_in:
+            if os.path.exists('/home/pi/handshakes/remote_cracking.potfile'):
+                with open('/home/pi/handshakes/remote_cracking.potfile', 'r') as file_in:
                     linesrc = [(line.strip(), 'remote_cracking.potfile') for line in file_in.readlines() if line.strip()]
             if not lineswpa and not linesrc:
                 logging.info("[Sorted-Password-List] no potfiles found")
