@@ -28,7 +28,7 @@ class InetIcon(pwnagotchi.ui.components.Widget):
 
 class InternetConectionPlugin(plugins.Plugin):
     __author__ = 'neonlightning'
-    __version__ = '1.1.5'
+    __version__ = '1.2.1'
     __license__ = 'GPL3'
     __description__ = 'A plugin that displays the Internet connection status on the pwnagotchi display.'
     __name__ = 'InternetConectionPlugin'
@@ -37,8 +37,9 @@ class InternetConectionPlugin(plugins.Plugin):
     """
 
     def __init__(self):
-        self.icon_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "internet-conection.png")
+        self.icon_on_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "internet-conection-on.png")
         self.icon_off_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "internet-conection-off.png")
+        self.icon_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "internet-conection-off.png")
         self.current_state = None
 
     def download_icon(self, url, save_path):
@@ -77,7 +78,7 @@ class InternetConectionPlugin(plugins.Plugin):
     def on_loaded(self):
         if not os.path.exists(self.icon_path):
             logging.info("[Internet Conection] on icon path not found")
-            self.download_icon("https://raw.githubusercontent.com/NeonLightning/pwny/main/internet-conection.png", self.icon_path)
+            self.download_icon("https://raw.githubusercontent.com/NeonLightning/pwny/main/internet-conection-on.png", self.icon_path)
         if not os.path.exists(self.icon_off_path):
             logging.info("[Internet Conection] off icon path not found")
             self.download_icon("https://raw.githubusercontent.com/NeonLightning/pwny/main/internet-conection-off.png", self.icon_off_path)
@@ -90,38 +91,26 @@ class InternetConectionPlugin(plugins.Plugin):
                 ui.add_element('connection_status', InetIcon(xy=(0,218), value=self.icon_path, invert=self.invert_status))
             except Exception as e:
                 logging.info(f"Error loading {e}")
-        else:
-            try:
-                ui.add_element('connection_status', InetIcon(xy=(0,218), value=self.icon_off_path, invert=self.invert_status))
-            except Exception as e:
-                logging.info(f"Error loading {e}")
-        ui.add_element('ineticon', components.LabeledValue(color=view.BLACK, label='', value='',
-                                                                   position=(195, 100), label_font=fonts.Small, text_font=fonts.Small))
 
     def on_ui_update(self, ui):
         with ui._lock:
             is_connected = self._is_internet_available()
             if is_connected != self.current_state:
                 self.current_state = is_connected
-                icon_path = self.icon_path if is_connected else self.icon_off_path
                 try:
-                    ui.remove_element('connection_status')
-                except KeyError:
-                    pass
-                try:
-                    ui.add_element('connection_status', InetIcon(xy=(0,218), value=icon_path, invert=self.invert_status))
+                    source_path = self.icon_on_path if is_connected else self.icon_off_path
+                    with open(source_path, 'rb') as source_file:
+                        icon_data = source_file.read()
+                    with open(self.icon_path, 'wb') as target_file:
+                        target_file.write(icon_data)
                 except Exception as e:
-                    logging.error(f"Error updating connection status: {e}")
-                    logging.error(traceback.format_exc())
+                    logging.error(f"Error updating icon file: {e}")
+
 
     def on_unload(self, ui):
         with ui._lock:
             try:
                 ui.remove_element('connection_status')
-            except KeyError:
-                pass
-            try:
-                ui.remove_element('ineticon')
             except KeyError:
                 pass
         logging.info("[Internet Conection] Plugin unloaded.")
