@@ -1,4 +1,4 @@
-import logging, os, pwnagotchi, requests, socket, traceback
+import logging, os, pwnagotchi, requests, socket, traceback, shutil
 import pwnagotchi.ui.components as components
 import pwnagotchi.ui.view as view
 import pwnagotchi.ui.fonts as fonts
@@ -28,7 +28,7 @@ class InetIcon(pwnagotchi.ui.components.Widget):
 
 class InternetConectionPlugin(plugins.Plugin):
     __author__ = 'neonlightning'
-    __version__ = '1.2.1'
+    __version__ = '1.2.2'
     __license__ = 'GPL3'
     __description__ = 'A plugin that displays the Internet connection status on the pwnagotchi display.'
     __name__ = 'InternetConectionPlugin'
@@ -39,7 +39,7 @@ class InternetConectionPlugin(plugins.Plugin):
     def __init__(self):
         self.icon_on_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "internet-conection-on.png")
         self.icon_off_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "internet-conection-off.png")
-        self.icon_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "internet-conection-off.png")
+        self.icon_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "internet-conection.png")
         self.current_state = None
 
     def download_icon(self, url, save_path):
@@ -76,13 +76,18 @@ class InternetConectionPlugin(plugins.Plugin):
         return False
     
     def on_loaded(self):
-        if not os.path.exists(self.icon_path):
+        if not os.path.exists(self.icon_on_path):
             logging.info("[Internet Conection] on icon path not found")
-            self.download_icon("https://raw.githubusercontent.com/NeonLightning/pwny/main/internet-conection-on.png", self.icon_path)
+            self.download_icon("https://raw.githubusercontent.com/NeonLightning/pwny/main/internet-conection-on.png", self.icon_on_path)
         if not os.path.exists(self.icon_off_path):
             logging.info("[Internet Conection] off icon path not found")
             self.download_icon("https://raw.githubusercontent.com/NeonLightning/pwny/main/internet-conection-off.png", self.icon_off_path)
-        self.invert_status = self.invert()
+        try:
+            shutil.copy(self.icon_off_path, self.icon_path)
+            logging.info("[Internet Conection] setup icon.")
+        except Exception as e:
+            logging.error(f"[Internet Conection] Error copying file: {e}")
+            self.invert_status = self.invert()
         logging.info("[Internet Conection] Plugin loaded.")
 
     def on_ui_setup(self, ui):
