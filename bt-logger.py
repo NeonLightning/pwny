@@ -14,7 +14,7 @@ from pwnagotchi.ui.view import BLACK
 
 class BTLog(plugins.Plugin):
     __author__ = 'NeonLightning'
-    __version__ = '1.0.5'
+    __version__ = '1.0.6'
     __license__ = 'GPL3'
     __description__ = 'Logs and displays a count of bluetooth devices seen.'
 
@@ -180,10 +180,9 @@ class BTLog(plugins.Plugin):
     def log_bluetooth_scan(self, output_file, interim_file):
         device_pattern = re.compile(r'NEW.*Device ([0-9A-F:]{17}) (.+)')
         hex_pattern = re.compile(r'^[0-9A-F]{2}-[0-9A-F]{2}-[0-9A-F]{2}-[0-9A-F]{2}-[0-9A-F]{2}-[0-9A-F]{2}$')
-
         with open(output_file, 'a') as log_file:
             process = subprocess.Popen(['bluetoothctl'], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                       stderr=subprocess.PIPE, universal_newlines=True)
+                                    stderr=subprocess.PIPE, universal_newlines=True)
             process.stdin.write('scan on\n')
             process.stdin.flush()
             while self.running:
@@ -192,43 +191,39 @@ class BTLog(plugins.Plugin):
                 if match:
                     mac_address = match.group(1)
                     device_name = match.group(2)
+                    if self.id_only:
+                        # Normalize the device name to MAC address format
+                        normalized_device_name = device_name.replace('-', ':')
+                        if normalized_device_name.lower() == mac_address.lower():
+                            continue
                     entry = f"{device_name} {mac_address}"
-                    latitude, longitude = self.get_gps_coordinates()
-                    if not self.is_duplicate(entry, interim_file, latitude, longitude) and (not self.id_only or not hex_pattern.search(device_name)):
+                    latitude, longitude = self.get_gps_coordinates() if self.gps else (None, None)                    
+                    if not self.is_duplicate(entry, interim_file, latitude, longitude):
                         self.count += 1
                         log_entry = f"{entry}"
                         logging.info(f"[BT-Log] {log_entry}")
-                        if self.gps:
-                            if latitude is not None and longitude is not None:
-                                log_entry = f"{log_entry}: {latitude}, {longitude}\n"
-                            else:
-                                log_entry = f"{entry}: 0, 0\n"
+                        if self.gps and latitude is not None and longitude is not None:
+                            log_entry = f"{log_entry}: {latitude}, {longitude}\n"
                         else:
                             log_entry = f"{entry}\n"
                         log_file.write(log_entry)
                         log_file.flush()
                         with open(interim_file, 'a') as interim:
-                            interim.write(f"{entry} {latitude} {longitude}\n")
+                            interim.write(f"{entry} {latitude} {longitude}\n" if self.gps else f"{entry}\n")
                             interim.flush()
                         self.organize_bluetooth_log(output_file)
 
-    def is_duplicate(self, entry, interim_file, latitude, longitude):
+    def is_duplicate(self, entry, interim_file, latitude=None, longitude=None):
         try:
             with open(interim_file, 'r') as interim:
                 for line in interim:
-                    logged_entry, logged_latitude, logged_longitude = line.rsplit(' ', 2)
-                    if logged_entry == entry:
-                        try:
-                            logged_latitude = float(logged_latitude)
-                            logged_longitude = float(logged_longitude)
-                            if latitude is None and longitude is None:
-                                if logged_latitude == 0 and logged_longitude == 0:
-                                    return True
-                            else:
-                                if abs(logged_latitude - latitude) < 0.005 and abs(logged_longitude - longitude) < 0.005:
-                                    return True
-                        except ValueError:
-                            continue
+                    logged_entry = line.strip()
+                    if self.gps:  
+                        logged_latitude, logged_longitude = line.rsplit(' ', 2)[-2:]  # Extract lat/long if gps is enabled
+                        if abs(float(logged_latitude) - latitude) < 0.005 and abs(float(logged_longitude) - longitude) < 0.005:
+                            return True
+                    if logged_entry == entry.strip():
+                        return True
             return False
         except FileNotFoundError:
             with open(interim_file, 'w'):
