@@ -93,7 +93,7 @@ class InternetConectionPlugin(plugins.Plugin):
         if self._is_internet_available():
             self.invert_status = self.invert()
             try:
-                ui.add_element('connection_status', InetIcon(xy=(0,218), value=self.icon_path))
+                ui.add_element('connection_status', InetIcon(xy=(0,218), value=self.icon_path, invert=self.invert_status))
             except Exception as e:
                 logging.info(f"Error loading {e}")
 
