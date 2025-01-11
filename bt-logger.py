@@ -1,7 +1,6 @@
 # gps requires gpsdeasy to be installed
 #main.plugins.bt-logger.enabled = true
 #main.plugins.bt-logger.gps = true
-#main.plugins.bt-logger.gps_track = true
 #main.plugins.bt-logger.id_only = true
 #main.plugins.bt-logger.display = true
 
@@ -14,14 +13,13 @@ from pwnagotchi.ui.view import BLACK
 
 class BTLog(plugins.Plugin):
     __author__ = 'NeonLightning'
-    __version__ = '1.0.6'
+    __version__ = '1.0.7'
     __license__ = 'GPL3'
     __description__ = 'Logs and displays a count of bluetooth devices seen.'
 
     def on_loaded(self):
         self.gps = self.options.get('gps', False)
         self.display = self.options.get('display', False)
-        self.gps_track = self.options.get('gps_track', False)
         self.id_only = self.options.get('id_only', True)
         self.count = 0
         self.interim_file = '/tmp/.btinterim.log'
@@ -203,7 +201,7 @@ class BTLog(plugins.Plugin):
                         log_entry = f"{entry}"
                         logging.info(f"[BT-Log] {log_entry}")
                         if self.gps and latitude is not None and longitude is not None:
-                            log_entry = f"{log_entry}: {latitude}, {longitude}\n"
+                            log_entry = f"{log_entry} - {latitude} {longitude}\n"
                         else:
                             log_entry = f"{entry}\n"
                         log_file.write(log_entry)
@@ -217,11 +215,7 @@ class BTLog(plugins.Plugin):
         try:
             with open(interim_file, 'r') as interim:
                 for line in interim:
-                    logged_entry = line.strip()
-                    if self.gps:  
-                        logged_latitude, logged_longitude = line.rsplit(' ', 2)[-2:]  # Extract lat/long if gps is enabled
-                        if abs(float(logged_latitude) - latitude) < 0.005 and abs(float(logged_longitude) - longitude) < 0.005:
-                            return True
+                    logged_entry = ' '.join(line.split()[:2])
                     if logged_entry == entry.strip():
                         return True
             return False
