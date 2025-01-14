@@ -265,7 +265,7 @@ TEMPLATE = """
 
 class SortedPasswordList(plugins.Plugin):
     __author__ = 'neonlightning'
-    __version__ = '2.0.4'
+    __version__ = '2.0.5'
     __license__ = 'GPL3'
     __description__ = 'List cracked passwords and show count of them.'
 
@@ -316,8 +316,14 @@ class SortedPasswordList(plugins.Plugin):
             if os.path.exists('/home/pi/handshakes/wpa-sec.cracked.potfile'):
                 with open('/home/pi/handshakes/wpa-sec.cracked.potfile', 'r') as file_in:
                     lineswpa = [(line.strip(), 'wpa-sec.cracked.potfile') for line in file_in.readlines() if line.strip()]
+            if os.path.exists('/root/handshakes/wpa-sec.cracked.potfile'):
+                with open('/root/handshakes/wpa-sec.cracked.potfile', 'r') as file_in:
+                    lineswpa = [(line.strip(), 'wpa-sec.cracked.potfile') for line in file_in.readlines() if line.strip()]
             if os.path.exists('/home/pi/handshakes/remote_cracking.potfile'):
                 with open('/home/pi/handshakes/remote_cracking.potfile', 'r') as file_in:
+                    linesrc = [(line.strip(), 'remote_cracking.potfile') for line in file_in.readlines() if line.strip()]]
+            if os.path.exists('/root/handshakes/remote_cracking.potfile'):
+                with open('/root/handshakes/remote_cracking.potfile', 'r') as file_in:
                     linesrc = [(line.strip(), 'remote_cracking.potfile') for line in file_in.readlines() if line.strip()]
             if not lineswpa and not linesrc:
                 logging.info("[Sorted-Password-List] no potfiles found")
@@ -361,7 +367,17 @@ class SortedPasswordList(plugins.Plugin):
     def _get_location_info(self, ssid, bssid):
         ssid = re.sub(r'\W+', '', ssid)
         geojson_file = (f"/home/pi/handshakes/{ssid}_{bssid}.gps.json")
+        geojson_file2 = (f"/root/handshakes/{ssid}_{bssid}.gps.json")
         if os.path.exists(geojson_file):
+            with open(geojson_file, 'r') as geo_file:
+                data = json.load(geo_file)
+            if data is not None:
+                lat = data.get('Latitude') or data.get('location', {}).get('lat')
+                lng = data.get('Longitude') or data.get('location', {}).get('lng')
+                if lat is not None and lng is not None:
+                    google_maps_link = f"https://www.google.com/maps?q={lat},{lng}"
+                    return lat, lng, google_maps_link
+        elif os.path.exists(geojson_file2):
             with open(geojson_file, 'r') as geo_file:
                 data = json.load(geo_file)
             if data is not None:
@@ -398,7 +414,7 @@ class SortedPasswordList(plugins.Plugin):
                         password = data.get('password')
                         ssid = data.get('ssid')
                         bssid = data.get('bssid')
-                        png_filepath = f'/root/handshakes/{ssid}_{bssid}_{password}.png'
+                        png_filepath = f'/home/pi/qrcodes/{ssid}_{bssid}_{password}.png'
                         if self.keep_qr:
                             if os.path.exists(png_filepath):
                                 response = send_file(png_filepath, mimetype='image/png')
