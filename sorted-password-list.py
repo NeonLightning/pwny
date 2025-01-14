@@ -265,7 +265,7 @@ TEMPLATE = """
 
 class SortedPasswordList(plugins.Plugin):
     __author__ = 'neonlightning'
-    __version__ = '2.0.8'
+    __version__ = '2.0.9'
     __license__ = 'GPL3'
     __description__ = 'List cracked passwords and show count of them.'
 
@@ -425,6 +425,9 @@ class SortedPasswordList(plugins.Plugin):
                         ssid = data.get('ssid')
                         bssid = data.get('bssid')
                         png_filepath = f'/home/pi/qrcodes/{ssid}_{bssid}_{password}.png'
+                        folder_path = os.path.dirname(png_filepath)
+                        if not os.path.exists(folder_path):
+                            os.makedirs(folder_path)
                         if self.keep_qr:
                             if os.path.exists(png_filepath):
                                 response = send_file(png_filepath, mimetype='image/png')
