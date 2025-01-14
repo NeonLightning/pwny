@@ -12,7 +12,6 @@ The `weather2pwn` plugin retrieves weather data and displays it based on GPS coo
 
 | Configuration Key                        | Description                                                                                  |
 |------------------------------------------|----------------------------------------------------------------------------------------------|
-| `main.plugins.weather2pwn.enabled`       | Enable or disable the plugin. (`true` or `false`)                                           |
 | `main.plugins.weather2pwn.log`           | Enable or disable logging of weather data. (`true` or `false`)                              |
 | `main.plugins.weather2pwn.gps_loc`       | Set the GPS device location (e.g., `/dev/ttyACM0`).                                          |
 | `main.plugins.weather2pwn.cityid`        | Set the City ID from OpenWeatherMap.                                                        |
@@ -59,7 +58,6 @@ The `sorted-password-list` plugin organizes and displays passwords, with additio
 
 #### weather2pwn Example
 ```ini
-main.plugins.weather2pwn.enabled = true
 main.plugins.weather2pwn.log = false
 main.plugins.weather2pwn.gps_loc = "/dev/ttyACM0"
 main.plugins.weather2pwn.cityid = CITY_ID
@@ -93,7 +91,6 @@ Logs all seen Bluetooth devices and optionally includes GPS coordinates.
 ### Configuration Options
 | Configuration Key                     | Description                                                                   |
 |---------------------------------------|-------------------------------------------------------------------------------|
-| `main.plugins.bt-logger.enabled`      | Enable or disable the plugin. (`true` or `false`)                            |
 | `main.plugins.bt-logger.gps`          | Include GPS coordinates with the device name and MAC. (`true` or `false`)    |
 | `main.plugins.bt-logger.id_only`      | Exclude hidden devices. (`true` or `false`)                                  |
 | `main.plugins.bt-logger.display`      | Display the number of found devices on the screen. (`true` or `false`)       |
