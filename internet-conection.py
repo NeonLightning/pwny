@@ -43,7 +43,7 @@ class InternetConectionPlugin(plugins.Plugin):
         self.icon_off_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "internet-conection-off.png")
         self.icon_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "internet-conection.png")
 
-    def on_ready(self):
+    def on_ready(self, agent):
         if not os.path.exists(self.icon_on_path):
             logging.info("[Internet Conection] on icon path not found")
             self.download_icon("https://raw.githubusercontent.com/NeonLightning/pwny/main/internet-conection-on.png", self.icon_on_path)

@@ -20,17 +20,13 @@ import pwnagotchi
 
 class Weather2Pwn(plugins.Plugin):
     __author__ = 'NeonLightning'
-    __version__ = '2.2.6'
+    __version__ = '2.2.7'
     __license__ = 'GPL3'
     __description__ = 'Weather display from gps data or city id, with optional logging'
 
     def on_ready(self, agent):
         self.readycheck = True
         time.sleep(5)
-        if self.getbycity:
-            pass
-        else:
-            self.set_gps_device()
         self._update_weather()
         time.sleep(5)
         self.running = True
@@ -42,16 +38,6 @@ class Weather2Pwn(plugins.Plugin):
             return True
         except OSError:
             return False
-
-    def configure_gpsd(self):
-        try:
-            subprocess.run(["sudo", "systemctl", "stop", "gpsd"], check=True)
-            logging.info(f"[Weather2Pwn] Stopped any running gpsd instance.")
-            subprocess.run(["sudo", "gpsd", self.gps_loc, "-F", "/var/run/gpsd.sock"], check=True)
-            logging.info(f"[Weather2Pwn] Started gpsd with device {self.gps_loc}.")
-            
-        except subprocess.CalledProcessError as e:
-            logging.error(f"[Weather2Pwn] Failed to configure gpsd: {e}")
 
     def ensure_gpsd_running(self):
         try:
@@ -78,34 +64,6 @@ class Weather2Pwn(plugins.Plugin):
         except Exception as e:
             logging.error(f"[Weather2Pwn] Exception fetching weather data: {e}")
             return None
-        
-    def set_gps_device(self):
-        try:
-            config_file = '/etc/default/gpsd'
-            if not os.path.exists(config_file):
-                logging.error(f"[Weather2Pwn] Configuration file {config_file} not found.")
-                return False
-            with open(config_file, 'r') as file:
-                lines = file.readlines()
-            device_set = False
-            with open(config_file, 'w') as file:
-                for line in lines:
-                    if line.startswith('DEVICES'):
-                        if f'DEVICES="{self.gps_loc}"' in line:
-                            logging.info(f"[Weather2Pwn] DEVICES is already set to {self.gps_loc}, skipping update.")
-                            device_set = True
-                            file.write(line)
-                        else:
-                            file.write(f'DEVICES="{self.gps_loc}"\n')
-                    else:
-                        file.write(line)
-            if not device_set:
-                subprocess.run(['sudo', 'systemctl', 'restart', 'gpsd'], check=True)
-                logging.info(f"[Weather2Pwn] GPS device set to {self.gps_loc} and gpsd service restarted.")
-            return True
-        except Exception as e:
-            logging.exception(f"[Weather2Pwn] Error setting GPS device: {e}")
-            return False
 
     def get_gps_coordinates(self):
         if not self.ensure_gpsd_running():
