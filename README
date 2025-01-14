@@ -47,7 +47,7 @@ The `sorted-password-list` plugin organizes and displays passwords, with additio
   ```bash
   sudo apt install python3-qrcode
   ```
-- The plugin saves generated QR codes to `/root/handshakes/` when `keep_qr` is enabled.
+- The plugin saves generated QR codes to `/home/pi/qrcodes/` when `keep_qr` is enabled.
 
 ---
 
