@@ -11,7 +11,7 @@
 # main.plugins.sorted-password-list.position = "0,93"
 # you can display a qr code for each password
 # main.plugins.sorted-password-list.qr_display = True or False
-# you will need to sudo apt install python3-qrcode or sudo pip install qrcode (pip install only on older versions of pwnagotchi)
+# you will need to sudo apt install python3-qrcode
 
 import logging, os, json, re, pwnagotchi, tempfile
 from pwnagotchi.ui.components import LabeledValue
@@ -265,7 +265,7 @@ TEMPLATE = """
 
 class SortedPasswordList(plugins.Plugin):
     __author__ = 'neonlightning'
-    __version__ = '2.0.5'
+    __version__ = '2.0.7'
     __license__ = 'GPL3'
     __description__ = 'List cracked passwords and show count of them.'
 
@@ -313,19 +313,24 @@ class SortedPasswordList(plugins.Plugin):
         try:
             lineswpa = []
             linesrc = []
+            lineswpa2 = []
+            linesrc2 = []
             if os.path.exists('/home/pi/handshakes/wpa-sec.cracked.potfile'):
                 with open('/home/pi/handshakes/wpa-sec.cracked.potfile', 'r') as file_in:
                     lineswpa = [(line.strip(), 'wpa-sec.cracked.potfile') for line in file_in.readlines() if line.strip()]
-            if os.path.exists('/root/handshakes/wpa-sec.cracked.potfile'):
-                with open('/root/handshakes/wpa-sec.cracked.potfile', 'r') as file_in:
+            if os.path.exists('/home/pi/handshakes/wpa-sec.cracked.potfile'):
+                with open('/home/pi/handshakes/wpa-sec.cracked.potfile', 'r') as file_in:
                     lineswpa = [(line.strip(), 'wpa-sec.cracked.potfile') for line in file_in.readlines() if line.strip()]
+            if os.path.exists('/home/pi/handshakes/wpa-sec.cracked.potfile'):
+                with open('/root/handshakes/wpa-sec.cracked.potfile', 'r') as file_in:
+                    lineswpa2 = [(line.strip(), 'wpa-sec.cracked.potfile') for line in file_in.readlines() if line.strip()]
             if os.path.exists('/home/pi/handshakes/remote_cracking.potfile'):
                 with open('/home/pi/handshakes/remote_cracking.potfile', 'r') as file_in:
-                    linesrc = [(line.strip(), 'remote_cracking.potfile') for line in file_in.readlines() if line.strip()]]
+                    linesrc = [(line.strip(), 'remote_cracking.potfile') for line in file_in.readlines() if line.strip()]
             if os.path.exists('/root/handshakes/remote_cracking.potfile'):
                 with open('/root/handshakes/remote_cracking.potfile', 'r') as file_in:
-                    linesrc = [(line.strip(), 'remote_cracking.potfile') for line in file_in.readlines() if line.strip()]
-            if not lineswpa and not linesrc:
+                    linesrc2 = [(line.strip(), 'remote_cracking.potfile') for line in file_in.readlines() if line.strip()]
+            if not lineswpa and not linesrc and not lineswpa2 and not linesrc2:
                 logging.info("[Sorted-Password-List] no potfiles found")
                 return []
             unique_lines = set()
