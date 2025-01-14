@@ -1,7 +1,5 @@
 # Plugins Configuration Guide
 
-This README provides configuration instructions for two plugins: **weather2pwn** and **sorted-password-list**. Both plugins offer customizability and advanced functionality for specific use cases. Follow the instructions below to set up and configure these plugins to meet your needs.
-
 ---
 
 ## **weather2pwn Plugin**
