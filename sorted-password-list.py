@@ -3,7 +3,7 @@
 ################################################################
 # this will show the number of unique passwords
 # main.plugins.sorted-password-list.show_number = True or False
-# this will keep the qr files in /root/handshakes/ when you create one
+# this will keep the qr files in /pi/home/qrcodes/ when you create one
 # main.plugins.sorted-password-list.keep_qr = True or False
 # this will limit the fields displayed in webui to the ones chosen
 # main.plugins.sorted-password-list.fields = ['ssid', 'bssid', 'password', 'origin', 'gps', 'strength']
@@ -265,7 +265,7 @@ TEMPLATE = """
 
 class SortedPasswordList(plugins.Plugin):
     __author__ = 'neonlightning'
-    __version__ = '2.0.7'
+    __version__ = '2.0.8'
     __license__ = 'GPL3'
     __description__ = 'List cracked passwords and show count of them.'
 
@@ -318,18 +318,23 @@ class SortedPasswordList(plugins.Plugin):
             if os.path.exists('/home/pi/handshakes/wpa-sec.cracked.potfile'):
                 with open('/home/pi/handshakes/wpa-sec.cracked.potfile', 'r') as file_in:
                     lineswpa = [(line.strip(), 'wpa-sec.cracked.potfile') for line in file_in.readlines() if line.strip()]
-            if os.path.exists('/home/pi/handshakes/wpa-sec.cracked.potfile'):
-                with open('/home/pi/handshakes/wpa-sec.cracked.potfile', 'r') as file_in:
-                    lineswpa = [(line.strip(), 'wpa-sec.cracked.potfile') for line in file_in.readlines() if line.strip()]
-            if os.path.exists('/home/pi/handshakes/wpa-sec.cracked.potfile'):
+            else:
+                pass
+            if os.path.exists('/root/handshakes/wpa-sec.cracked.potfile'):
                 with open('/root/handshakes/wpa-sec.cracked.potfile', 'r') as file_in:
-                    lineswpa2 = [(line.strip(), 'wpa-sec.cracked.potfile') for line in file_in.readlines() if line.strip()]
+                    lineswpa = [(line.strip(), 'wpa-sec.cracked.potfile') for line in file_in.readlines() if line.strip()]
+            else:
+                pass
             if os.path.exists('/home/pi/handshakes/remote_cracking.potfile'):
                 with open('/home/pi/handshakes/remote_cracking.potfile', 'r') as file_in:
                     linesrc = [(line.strip(), 'remote_cracking.potfile') for line in file_in.readlines() if line.strip()]
+            else:
+                pass
             if os.path.exists('/root/handshakes/remote_cracking.potfile'):
                 with open('/root/handshakes/remote_cracking.potfile', 'r') as file_in:
                     linesrc2 = [(line.strip(), 'remote_cracking.potfile') for line in file_in.readlines() if line.strip()]
+            else:
+                pass
             if not lineswpa and not linesrc and not lineswpa2 and not linesrc2:
                 logging.info("[Sorted-Password-List] no potfiles found")
                 return []
