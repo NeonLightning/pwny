@@ -1,0 +1,88 @@
+# Plugins Configuration Guide
+
+This README provides configuration instructions for two plugins: **weather2pwn** and **sorted-password-list**. Both plugins offer customizability and advanced functionality for specific use cases. Follow the instructions below to set up and configure these plugins to meet your needs.
+
+---
+
+## **weather2pwn Plugin**
+
+The `weather2pwn` plugin retrieves weather data and displays it based on GPS coordinates or a predefined city ID. It integrates with OpenWeatherMap and requires an API key for data retrieval.
+
+### Configuration Options
+
+| Configuration Key                        | Description                                                                                  |
+|------------------------------------------|----------------------------------------------------------------------------------------------|
+| `main.plugins.weather2pwn.enabled`       | Enable or disable the plugin. (`true` or `false`)                                           |
+| `main.plugins.weather2pwn.log`           | Enable or disable logging of weather data. (`true` or `false`)                              |
+| `main.plugins.weather2pwn.gps_loc`       | Set the GPS device location (e.g., `/dev/ttyACM0`).                                          |
+| `main.plugins.weather2pwn.cityid`        | Set the City ID from OpenWeatherMap.                                                        |
+| `main.plugins.weather2pwn.getbycity`     | Choose whether to retrieve weather data by GPS or City ID. (`true` or `false`)              |
+| `main.plugins.weather2pwn.api_key`       | Your OpenWeatherMap API key. Obtain it from [OpenWeatherMap](https://openweathermap.org/).  |
+| `main.plugins.weather2pwn.decimal`       | Display temperatures with two decimal places. (`true` or `false`)                          |
+| `main.plugins.weather2pwn.units`         | Set temperature units to Celsius (`c`) or Fahrenheit (`f`).                                 |
+| `main.plugins.weather2pwn.displays`      | Choose which values to display (e.g., `"city", "temp", "sky"`).                           |
+
+### Notes
+- GPS functionality requires `gpsdeasy`. Install it before enabling GPS-based weather updates.
+- If GPS is unavailable, the plugin falls back to the predefined City ID.
+
+---
+
+## **sorted-password-list Plugin**
+
+The `sorted-password-list` plugin organizes and displays passwords, with additional features such as QR code generation and field customization.
+
+### Configuration Options
+
+| Configuration Key                                       | Description                                                                                   |
+|---------------------------------------------------------|-----------------------------------------------------------------------------------------------|
+| `main.plugins.sorted-password-list.show_number`         | Show the number of unique passwords. (`true` or `false`)                                      |
+| `main.plugins.sorted-password-list.keep_qr`             | Keep the generated QR files in `/root/handshakes/`. (`true` or `false`)                       |
+| `main.plugins.sorted-password-list.fields`              | Limit displayed fields in the web UI (e.g., `["ssid", "bssid", "password", "origin"]`).        |
+| `main.plugins.sorted-password-list.position`            | Set custom display position using X and Y coordinates (e.g., `"0,93"`).                     |
+| `main.plugins.sorted-password-list.qr_display`          | Enable or disable QR code display for each password. (`true` or `false`)                     |
+
+### Requirements
+- **QR Code Generation**: Install the required library using the following command:
+  ```bash
+  sudo apt install python3-qrcode
+  ```
+- The plugin saves generated QR codes to `/root/handshakes/` when `keep_qr` is enabled.
+
+---
+
+### Example Configurations
+
+#### weather2pwn Example
+```ini
+main.plugins.weather2pwn.enabled = true
+main.plugins.weather2pwn.log = false
+main.plugins.weather2pwn.gps_loc = "/dev/ttyACM0"
+main.plugins.weather2pwn.cityid = "CITY_ID"
+main.plugins.weather2pwn.getbycity = false
+main.plugins.weather2pwn.api_key = "API_KEY"
+main.plugins.weather2pwn.decimal = true
+main.plugins.weather2pwn.units = "c"
+main.plugins.weather2pwn.displays = ["city", "temp", "sky"]
+```
+
+#### sorted-password-list Example
+```ini
+main.plugins.sorted-password-list.show_number = true
+main.plugins.sorted-password-list.keep_qr = false
+main.plugins.sorted-password-list.fields = ["ssid", "bssid", "password", "origin", "gps", "strength"]
+main.plugins.sorted-password-list.position = "0,93"
+main.plugins.sorted-password-list.qr_display = true
+```
+
+---
+
+### Getting Started with OpenWeatherMap
+1. Visit [OpenWeatherMap](https://openweathermap.org/).
+2. Create an account and obtain your API key.
+3. Search for your city and note the City ID.
+
+### Additional Notes
+- Customize plugin configurations to suit your setup.
+- Ensure all required libraries and dependencies are installed before enabling plugins.
+
