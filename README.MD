@@ -54,32 +54,6 @@ The `sorted-password-list` plugin organizes and displays passwords, with additio
 
 ---
 
-### Example Configurations
-
-#### weather2pwn Example
-```ini
-main.plugins.weather2pwn.log = false
-main.plugins.weather2pwn.gps_loc = "/dev/ttyACM0"
-main.plugins.weather2pwn.cityid = CITY_ID
-main.plugins.weather2pwn.getbycity = false
-main.plugins.weather2pwn.api_key = "API_KEY"
-main.plugins.weather2pwn.decimal = true
-main.plugins.weather2pwn.units = "c"
-main.plugins.weather2pwn.displays = ["city", "temp", "sky"]
-```
-
-#### sorted-password-list Example
-```ini
-main.plugins.sorted-password-list.show_number = true
-main.plugins.sorted-password-list.keep_qr = false
-main.plugins.sorted-password-list.fields = ["ssid", "bssid", "password", "origin", "gps", "strength"]
-main.plugins.sorted-password-list.position = "0,93"
-main.plugins.sorted-password-list.qr_display = true
-```
-
----
-
-
 ## **internet-conection**
 A plugin to display if your Pwnagotchi is connected to the internet.
 
