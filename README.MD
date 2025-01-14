@@ -39,7 +39,7 @@ The `sorted-password-list` plugin organizes and displays passwords, with additio
 |---------------------------------------------------------|-----------------------------------------------------------------------------------------------|
 | `main.plugins.sorted-password-list.show_number`         | Show the number of unique passwords. (`true` or `false`)                                      |
 | `main.plugins.sorted-password-list.keep_qr`             | Keep the generated QR files in `/home/pi/qrcodes/`. (`true` or `false`)                       |
-| `main.plugins.sorted-password-list.fields`              | Limit displayed fields in the web UI (e.g., `["ssid", "bssid", "password", "origin"]`).        |
+| `main.plugins.sorted-password-list.fields`              | Limit displayed fields(e.g., `['ssid', 'bssid', 'password', 'origin', 'gps', 'strength']`).        |
 | `main.plugins.sorted-password-list.position`            | Set custom display position using X and Y coordinates (e.g., `"0,93"`).                     |
 | `main.plugins.sorted-password-list.qr_display`          | Enable or disable QR code display for each password. (`true` or `false`)                     |
 
