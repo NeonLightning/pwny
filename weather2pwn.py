@@ -279,8 +279,8 @@ class Weather2Pwn(plugins.Plugin):
         if self.running:
                     current_time = time.time()
                     if current_time - self.last_fetch_time >= self.fetch_interval:
-                        self.fetch_interval = 900
                     if self._is_internet_available():
+                        self.fetch_interval = 900
                         logging.info("[Weather2Pwn] ui_update")
                         if os.path.exists('/tmp/weather2pwn_data.json'):
                             with open('/tmp/weather2pwn_data.json', 'r') as f:
@@ -306,6 +306,7 @@ class Weather2Pwn(plugins.Plugin):
                                 if 'sky' in self.displays:
                                     ui.set('weather', f"{main_weather}")
                     else:
+                        self.fetch_interval = 300
                         current_time = time.time()
                         if 'city' in self.displays:
                             ui.set('city', 'No Network')
