@@ -190,7 +190,6 @@ class BTLog(plugins.Plugin):
                     mac_address = match.group(1)
                     device_name = match.group(2)
                     if self.id_only:
-                        # Normalize the device name to MAC address format
                         normalized_device_name = device_name.replace('-', ':')
                         if normalized_device_name.lower() == mac_address.lower():
                             continue
@@ -199,30 +198,41 @@ class BTLog(plugins.Plugin):
                     if not self.is_duplicate(entry, interim_file, latitude, longitude):
                         self.count += 1
                         log_entry = f"{entry}"
-                        logging.info(f"[BT-Log] {log_entry}")
+                        logging.info(f"[BT-Log] New entry: {log_entry}")
                         if self.gps and latitude is not None and longitude is not None:
                             log_entry = f"{log_entry} - {latitude} {longitude}\n"
                         else:
-                            log_entry = f"{entry}\n"
+                            log_entry = f"{log_entry}\n"
                         log_file.write(log_entry)
                         log_file.flush()
                         with open(interim_file, 'a') as interim:
                             interim.write(f"{entry} {latitude} {longitude}\n" if self.gps else f"{entry}\n")
                             interim.flush()
                         self.organize_bluetooth_log(output_file)
+                    else:
+                        logging.debug(f"[BT-Log] Skipping duplicate: {entry} - {latitude} {longitude}")
 
-    def is_duplicate(self, entry, interim_file, latitude=None, longitude=None):
+
+
+    def is_duplicate(self, entry, interim_file, latitude, longitude):
         try:
             with open(interim_file, 'r') as interim:
                 for line in interim:
-                    logged_entry = ' '.join(line.split()[:2])
+                    logged_entry, logged_latitude, logged_longitude = line.rsplit(' ', 2)
                     if logged_entry == entry.strip():
-                        return True
+                        try:
+                            logged_latitude = float(logged_latitude)
+                            logged_longitude = float(logged_longitude)
+                            if abs(logged_latitude - latitude) < 0.005 and abs(logged_longitude - longitude) < 0.005:
+                                return True
+                        except ValueError:
+                            continue
             return False
         except FileNotFoundError:
             with open(interim_file, 'w'):
                 pass
             return False
+
 
     def organize_bluetooth_log(self, output_file):
         hex_pattern = re.compile(r'^[0-9A-F]{2}-[0-9A-F]{2}-[0-9A-F]{2}-[0-9A-F]{2}-[0-9A-F]{2}-[0-9A-F]{2}$')

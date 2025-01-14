@@ -265,7 +265,7 @@ TEMPLATE = """
 
 class SortedPasswordList(plugins.Plugin):
     __author__ = 'neonlightning'
-    __version__ = '2.0.3'
+    __version__ = '2.0.4'
     __license__ = 'GPL3'
     __description__ = 'List cracked passwords and show count of them.'
 
@@ -360,7 +360,7 @@ class SortedPasswordList(plugins.Plugin):
 
     def _get_location_info(self, ssid, bssid):
         ssid = re.sub(r'\W+', '', ssid)
-        geojson_file = (f"/root/handshakes/{ssid}_{bssid}.gps.json")
+        geojson_file = (f"/home/pi/handshakes/{ssid}_{bssid}.gps.json")
         if os.path.exists(geojson_file):
             with open(geojson_file, 'r') as geo_file:
                 data = json.load(geo_file)
