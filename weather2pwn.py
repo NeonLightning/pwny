@@ -57,6 +57,7 @@ class Weather2Pwn(plugins.Plugin):
                 return data
             else:
                 while self.errortries == 3:
+                    logging.info(f"[Weather2Pwn] Error fetching weather data attempt {self.errortries}")
                     time.sleep(1)
                     self.errortries += 1
                     self.get_weather_by_city_id()
@@ -65,6 +66,7 @@ class Weather2Pwn(plugins.Plugin):
                 return None
         except Exception as e:
             while self.errortries == 3:
+                logging.info(f"[Weather2Pwn] Error fetching weather data attempt {self.errortries}")
                 time.sleep(1)
                 self.errortries += 1
                 self.get_weather_by_city_id()
@@ -111,6 +113,7 @@ class Weather2Pwn(plugins.Plugin):
                 return response.json()
             else:
                 while self.errortries == 3:
+                    logging.info(f"[Weather2Pwn] Error fetching weather data attempt {self.errortries}")
                     time.sleep(1)
                     self.errortries += 1
                     self.get_weather_by_gps
@@ -119,6 +122,7 @@ class Weather2Pwn(plugins.Plugin):
                 return None
         except Exception as e:
             while self.errortries == 3:
+                logging.info(f"[Weather2Pwn] Error fetching weather data attempt {self.errortries}")
                 time.sleep(1)
                 self.errortries += 1
                 self.get_weather_by_gps
@@ -206,7 +210,8 @@ class Weather2Pwn(plugins.Plugin):
                             if latitude != 0 and longitude != 0 or not latitude and longitude:
                                 logging.info(f"[Weather2Pwn] GPS data found. {latitude}, {longitude}")
                                 self.weather_data = self.get_weather_by_gps(latitude, longitude, self.api_key)
-                                self.weather_data["name"] = self.weather_data["name"] + " *GPS*"
+                                if self.weather_data is not None:
+                                    self.weather_data["name"] = self.weather_data["name"] + " *GPS*"
                                 logging.info("[Weather2Pwn] weather setup by gps")
                                 self.last_fetch_time = current_time
                             else:
@@ -220,7 +225,8 @@ class Weather2Pwn(plugins.Plugin):
                         else:
                             self.weather_data = self.get_weather_by_city_id()
                             if self.weather_data:
-                                logging.info("[Weather2Pwn] weather setup by city")
+                                if self.weather_data is not None:
+                                    logging.info("[Weather2Pwn] weather setup by city")
                             else:
                                 logging.info("[Weather2Pwn] no weather data found")
                             self.last_fetch_time = current_time
@@ -278,6 +284,8 @@ class Weather2Pwn(plugins.Plugin):
 
     def on_unload(self, ui):
         self.running = False
+        if os.path.exists("/tmp/weather2pwn_data.json"):
+            os.remove("/tmp/weather2pwn_data.json")
         with ui._lock:
             for element in ['city', 'feels_like', 'weather']:
                 try:
