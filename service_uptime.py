@@ -10,7 +10,7 @@ import pwnagotchi.utils as utils
 
 class ServiceUptime(plugins.Plugin):
     __author__ = 'neonlightning'
-    __version__ = '1.0.3'
+    __version__ = '1.0.4'
     __license__ = 'GPL3'
     __description__ = 'Logs and displays Pwnagotchi service uptime'
 
@@ -28,15 +28,20 @@ class ServiceUptime(plugins.Plugin):
         self._first_run = True
         logging.info(f"[service uptime] service started at {start_str}")
 
-    def on_ready(self, agent):
+
+    def on_loaded(self):
         self.logging = self.options.get('logging', 'true')
-        if self.logging:
+        if self.logging == 'true':
             log_dir = "/home/pi/uptime_log/"
             os.makedirs(log_dir, exist_ok=True)
             timestamp = time.strftime("%Y%m%d-%H%M%S")
             self._log_file_path = os.path.join(log_dir, f"service_uptime-{timestamp}.log")
             with open(self._log_file_path, "w") as file:
                 file.write(f"Service uptime log started at {self._start_time}\n")
+        logging.info(f"[service uptime] Plugin loaded")
+
+    def on_ready(self, agent):
+        self._first_run = False
 
     def _log_uptime(self, message):
         with open(self._log_file_path, "w") as file:
@@ -63,10 +68,8 @@ class ServiceUptime(plugins.Plugin):
         elapsed_time = current_time - self._start
         uptime_str = utils.secs_to_hhmmss(elapsed_time)
         if self._first_run:
-            self.logging = self.options.get('logging', 'true')
             ui.set('service_uptime', f"Srv: {uptime_str}")
-            self._first_run = False
-        if self.logging:
+        if self.logging == 'true':
             if current_time - self._last_log_time >= 5:
                 self._log_uptime(f"Service uptime log started at {time.strftime('%Y-%m-%d %H:%M:%S', self._start_time)} Uptime: {uptime_str}\n")
                 self._last_log_time = current_time
