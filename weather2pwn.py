@@ -20,12 +20,13 @@ import pwnagotchi
 
 class Weather2Pwn(plugins.Plugin):
     __author__ = 'NeonLightning'
-    __version__ = '2.3.1'
+    __version__ = '2.3.2'
     __license__ = 'GPL3'
     __description__ = 'Weather display from gps data or city id, with optional logging'
 
     def on_ready(self, agent):
         self.running = True
+        self.loaded = True
         logging.info("[Weather2Pwn] Ready")
 
     def _is_internet_available(self):
@@ -248,31 +249,32 @@ class Weather2Pwn(plugins.Plugin):
             current_time = time.time()
             if current_time - self.last_fetch_time >= self.fetch_interval:
                 if self._is_internet_available():
-                    self._update_weather()
-                    self.fetch_interval = 900
-                    if os.path.exists('/tmp/weather2pwn_data.json'):
-                        with open('/tmp/weather2pwn_data.json', 'r') as f:
-                            self.weather_data = json.load(f)
-                    if self.weather_data:
-                        if "name" in self.weather_data:
-                            city_name = self.weather_data["name"]
-                            if 'city' in self.displays:
-                                ui.set('city', f"{city_name}")
-                        if "main" in self.weather_data and "feels_like" in self.weather_data["main"]:
-                            feels_like = self.weather_data["main"]["feels_like"]
-                            if 'temp' in self.displays: 
-                                if not self.decimal:
-                                    feels_like = round(feels_like)
-                                if self.units == "c":
-                                    ui.set('feels_like', f"{feels_like}°C")
-                                elif self.units == "f":
-                                    feels_like = (feels_like * 9/5) + 32
-                                    feels_like = round(feels_like)
-                                    ui.set('feels_like', f"{feels_like}°F")
-                        if "weather" in self.weather_data and len(self.weather_data["weather"]) > 0:
-                            main_weather = self.weather_data["weather"][0]["main"]
-                            if 'sky' in self.displays:
-                                ui.set('weather', f"{main_weather}")
+                    if self.loaded == True:
+                        self._update_weather()
+                        self.fetch_interval = 900
+                        if os.path.exists('/tmp/weather2pwn_data.json'):
+                            with open('/tmp/weather2pwn_data.json', 'r') as f:
+                                self.weather_data = json.load(f)
+                        if self.weather_data:
+                            if "name" in self.weather_data:
+                                city_name = self.weather_data["name"]
+                                if 'city' in self.displays:
+                                    ui.set('city', f"{city_name}")
+                            if "main" in self.weather_data and "feels_like" in self.weather_data["main"]:
+                                feels_like = self.weather_data["main"]["feels_like"]
+                                if 'temp' in self.displays: 
+                                    if not self.decimal:
+                                        feels_like = round(feels_like)
+                                    if self.units == "c":
+                                        ui.set('feels_like', f"{feels_like}°C")
+                                    elif self.units == "f":
+                                        feels_like = (feels_like * 9/5) + 32
+                                        feels_like = round(feels_like)
+                                        ui.set('feels_like', f"{feels_like}°F")
+                            if "weather" in self.weather_data and len(self.weather_data["weather"]) > 0:
+                                main_weather = self.weather_data["weather"][0]["main"]
+                                if 'sky' in self.displays:
+                                    ui.set('weather', f"{main_weather}")
                 else:
                     self.fetch_interval = 180
                     if 'city' in self.displays:
