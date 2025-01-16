@@ -20,12 +20,13 @@ import pwnagotchi
 
 class Weather2Pwn(plugins.Plugin):
     __author__ = 'NeonLightning'
-    __version__ = '2.3.2'
+    __version__ = '2.3.3'
     __license__ = 'GPL3'
     __description__ = 'Weather display from gps data or city id, with optional logging'
 
     def on_ready(self, agent):
         self.running = True
+        time.sleep(15)
         self.loaded = True
         logging.info("[Weather2Pwn] Ready")
 
