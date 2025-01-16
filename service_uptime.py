@@ -10,11 +10,33 @@ import pwnagotchi.utils as utils
 
 class ServiceUptime(plugins.Plugin):
     __author__ = 'neonlightning'
-    __version__ = '1.0.4'
+    __version__ = '1.0.6'
     __license__ = 'GPL3'
     __description__ = 'Logs and displays Pwnagotchi service uptime'
 
     def __init__(self):
+        self._start_time = None
+        self._start = None
+        self._last_log_time = None
+        self._first_run = True
+        log_dir = "/home/pi/uptime_log/"
+        os.makedirs(log_dir, exist_ok=True)
+        timestamp = time.strftime("%Y%m%d-%H%M%S")
+        self._log_file_path = os.path.join(log_dir, f"service_uptime-{timestamp}.log")
+
+    def on_ready(self, agent):
+        self.logging = self.options.get('logging', 'true')
+        if self.logging == True:
+            log_dir = "/home/pi/uptime_log/"
+            os.makedirs(log_dir, exist_ok=True)
+            timestamp = time.strftime("%Y%m%d-%H%M%S")
+            self._log_file_path = os.path.join(log_dir, f"service_uptime-{timestamp}.log")
+            with open(self._log_file_path, "w") as file:
+                file.write(f"Service uptime log started at {self._start_time}\n")
+        self._first_run = False
+        logging.info(f"[service uptime] Plugin loaded")
+
+    def on_loaded(self):
         try:
             result = subprocess.check_output(['systemctl', 'show', '-p', 'ActiveEnterTimestamp', 'pwnagotchi.service'])
             start_time_str = ' '.join(result.decode().strip().split('=')[1].split()[1:-1])
@@ -25,23 +47,8 @@ class ServiceUptime(plugins.Plugin):
             logging.error(f"[service uptime] Error getting pwnagotchi.service start time: {e}")
         self._last_log_time = time.time()
         self._last_ui_update_time = time.time()
-        self._first_run = True
+        time.sleep(10)
         logging.info(f"[service uptime] service started at {start_str}")
-
-
-    def on_loaded(self):
-        self.logging = self.options.get('logging', 'true')
-        if self.logging == 'true':
-            log_dir = "/home/pi/uptime_log/"
-            os.makedirs(log_dir, exist_ok=True)
-            timestamp = time.strftime("%Y%m%d-%H%M%S")
-            self._log_file_path = os.path.join(log_dir, f"service_uptime-{timestamp}.log")
-            with open(self._log_file_path, "w") as file:
-                file.write(f"Service uptime log started at {self._start_time}\n")
-        logging.info(f"[service uptime] Plugin loaded")
-
-    def on_ready(self, agent):
-        self._first_run = False
 
     def _log_uptime(self, message):
         with open(self._log_file_path, "w") as file:
@@ -68,9 +75,11 @@ class ServiceUptime(plugins.Plugin):
         elapsed_time = current_time - self._start
         uptime_str = utils.secs_to_hhmmss(elapsed_time)
         if self._first_run:
-            ui.set('service_uptime', f"Srv: {uptime_str}")
-        if self.logging == 'true':
-            if current_time - self._last_log_time >= 5:
+            ui.set('service_uptime', f"{uptime_str}")
+            self._first_run = False
+        if current_time - self._last_log_time >= 5:
+            self.logging = self.options.get('logging', 'true')
+            if self.logging == True:
                 self._log_uptime(f"Service uptime log started at {time.strftime('%Y-%m-%d %H:%M:%S', self._start_time)} Uptime: {uptime_str}\n")
                 self._last_log_time = current_time
         if current_time - self._last_ui_update_time >= 10:
