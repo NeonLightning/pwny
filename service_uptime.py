@@ -18,8 +18,8 @@ class ServiceUptime(plugins.Plugin):
         try:
             result = subprocess.check_output(['systemctl', 'show', '-p', 'ActiveEnterTimestamp', 'pwnagotchi.service'])
             start_time_str = result.decode().strip().split('=')[1]
-            parts = start_time_str.split(' ')
-            start_time_str = ' '.join(parts[1:])
+            start_time_str = start_time_str.split(' ')
+            start_time_str = ' '.join(start_time_str[1:])
             start_time_str = ' '.join(start_time_str.split(' ')[:-1])
             self._start_time = time.strptime(start_time_str, '%Y-%m-%d %H:%M:%S')
             self._start = time.mktime(self._start_time)
