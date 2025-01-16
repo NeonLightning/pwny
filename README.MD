@@ -128,5 +128,6 @@ Saves to /home/pi/uptime_log/.
 | Configuration Key                         | Description                                                                 |
 |-------------------------------------------|-----------------------------------------------------------------------------|
 | `main.plugins.service_uptime.position`     | Position on screen (e.g., `"0,12"`).                             |
+| `main.plugins.service_uptime.logging`     | enable or disable logging (`true` or `false`).                             |
 
 ---
