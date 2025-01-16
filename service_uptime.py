@@ -25,14 +25,7 @@ class ServiceUptime(plugins.Plugin):
         self._log_file_path = os.path.join(log_dir, f"service_uptime-{timestamp}.log")
 
     def on_ready(self, agent):
-        self.logging = self.options.get('logging', 'true')
-        if self.logging == True:
-            log_dir = "/home/pi/uptime_log/"
-            os.makedirs(log_dir, exist_ok=True)
-            timestamp = time.strftime("%Y%m%d-%H%M%S")
-            self._log_file_path = os.path.join(log_dir, f"service_uptime-{timestamp}.log")
-            with open(self._log_file_path, "w") as file:
-                file.write(f"Service uptime log started at {self._start_time}\n")
+        self.logging = self.options.get('logging', True)
         self._first_run = False
         logging.info(f"[service uptime] Plugin loaded")
 
@@ -78,7 +71,7 @@ class ServiceUptime(plugins.Plugin):
             ui.set('service_uptime', f"{uptime_str}")
             self._first_run = False
         if current_time - self._last_log_time >= 5:
-            self.logging = self.options.get('logging', 'true')
+            self.logging = self.options.get('logging', True)
             if self.logging == True:
                 self._log_uptime(f"Service uptime log started at {time.strftime('%Y-%m-%d %H:%M:%S', self._start_time)} Uptime: {uptime_str}\n")
                 self._last_log_time = current_time
