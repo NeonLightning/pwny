@@ -119,3 +119,14 @@ Switches between inverted and non-inverted modes on a timer.
 A simple plugin to display the time and date on the Pwnagotchi screen as separate labels.
 
 ---
+
+## **service_uptime**
+Logs and displays how long the pwnagotchi service has been running.
+Saves to /home/pi/uptime_log/.
+
+### Configuration Options
+| Configuration Key                         | Description                                                                 |
+|-------------------------------------------|-----------------------------------------------------------------------------|
+| `main.plugins.service_uptime.position`     | Position on screen (e.g., `"0,12"`).                             |
+
+---
