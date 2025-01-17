@@ -10,7 +10,7 @@ import pwnagotchi.utils as utils
 
 class ServiceUptime(plugins.Plugin):
     __author__ = 'neonlightning'
-    __version__ = '1.0.6'
+    __version__ = '1.0.7'
     __license__ = 'GPL3'
     __description__ = 'Logs and displays Pwnagotchi service uptime'
 
@@ -22,7 +22,8 @@ class ServiceUptime(plugins.Plugin):
         log_dir = "/home/pi/uptime_log/"
         os.makedirs(log_dir, exist_ok=True)
         timestamp = time.strftime("%Y%m%d-%H%M%S")
-        self._log_file_path = os.path.join(log_dir, f"service_uptime-{timestamp}.log")
+        filetimestamp = time.strftime("%Y%m%d")
+        self._log_file_path = os.path.join(log_dir, f"service_uptime-{filetimestamp}.log")
 
     def on_ready(self, agent):
         self.logging = self.options.get('logging', True)
@@ -38,14 +39,22 @@ class ServiceUptime(plugins.Plugin):
             start_str = time.strftime("%Y-%m-%d %H:%M:%S", self._start_time)
         except Exception as e:
             logging.error(f"[service uptime] Error getting pwnagotchi.service start time: {e}")
+        with open(self._log_file_path, "a+") as file:
+            self._log_line_number = sum(1 for _ in file)
+            file.write(f"Service started at {start_str}. Uptime: 0:00:00\n")
+
         self._last_log_time = time.time()
         self._last_ui_update_time = time.time()
-        time.sleep(10)
-        logging.info(f"[service uptime] service started at {start_str}")
+        logging.info(f"[service uptime] Service started at {start_str}")
 
-    def _log_uptime(self, message):
-        with open(self._log_file_path, "w") as file:
-            file.write(message)
+    def _log_uptime(self, uptime_str):
+        with open(self._log_file_path, "r+") as file:
+            lines = file.readlines()
+            if self._log_line_number is not None and self._log_line_number < len(lines):
+                lines[self._log_line_number] = f"Service started at {time.strftime('%Y-%m-%d %H:%M:%S', self._start_time)}. Uptime: {uptime_str}\n"
+                file.seek(0)
+                file.writelines(lines)
+                file.truncate()
 
     def on_unload(self, ui):
         with ui._lock:
@@ -67,14 +76,11 @@ class ServiceUptime(plugins.Plugin):
         current_time = time.time()
         elapsed_time = current_time - self._start
         uptime_str = utils.secs_to_hhmmss(elapsed_time)
-        if self._first_run:
-            ui.set('service_uptime', f"{uptime_str}")
-            self._first_run = False
-        if current_time - self._last_log_time >= 5:
-            self.logging = self.options.get('logging', True)
-            if self.logging == True:
-                self._log_uptime(f"Service uptime log started at {time.strftime('%Y-%m-%d %H:%M:%S', self._start_time)} Uptime: {uptime_str}\n")
-                self._last_log_time = current_time
         if current_time - self._last_ui_update_time >= 10:
+            self._last_log_time = current_time
+            self.logging = self.options.get('logging', True)
+            if self.logging:
+                self._log_uptime(uptime_str)
+                self._last_log_time = current_time
             ui.set('service_uptime', uptime_str)
             self._last_ui_update_time = current_time
