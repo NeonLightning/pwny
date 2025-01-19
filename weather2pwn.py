@@ -2,8 +2,6 @@
 # gps requires gpsdeasy to be installed
 #main.plugins.weather2pwn.enabled = true # enable plugin weather2pwn
 #main.plugins.weather2pwn.log = False # log the weather data
-#main.plugins.weather2pwn.gps_loc = "/dev/ttyACM0" or whatever tty your gps is
-# will be updated when gpsdeasy is updated
 #main.plugins.weather2pwn.cityid = "CITY_ID" # set the cityid
 #main.plugins.weather2pwn.getbycity = false # get the weather data from gps or cityid by default(gps falls back to cityid if not available)
 #main.plugins.weather2pwn.api_key = "API_KEY" # openweathermap.org api key
@@ -75,35 +73,53 @@ class Weather2Pwn(plugins.Plugin):
             logging.error(f"[Weather2Pwn] Exception fetching weather data: {e}")
             self.errortries = 0
             return None
-
+        
+    def get_location_data(self, server_url):
+        try:
+            response = requests.get(server_url)
+            response.raise_for_status()  # Raise an exception for HTTP errors
+            return response.json()  # Parse the JSON response
+        except requests.exceptions.RequestException as e:
+            logging.warning(f"Error connecting to the server: {e}")
+            return None
+        
     def get_gps_coordinates(self):
-        if not self.ensure_gpsd_running():
-            return 0, 0
+        if self.pwndroid:
+            server_url = f"http://192.168.44.1:8080"
+            location_data = self.get_location_data(server_url)
+            if location_data:
+                return location_data.get("latitude", 0), location_data.get("longitude", 0)
+            else:
+                logging.warning("[PwnDroid] Failed to retrieve PwnDroid coordinates.")
+                return 0, 0
         else:
-            try:
-                gpsd_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                gpsd_socket.connect(('localhost', 2947))
-                gpsd_socket.sendall(b'?WATCH={"enable":true,"json":true}\n')
-                time.sleep(2)
-                for _ in range(6):
-                    data = gpsd_socket.recv(4096).decode('utf-8')
-                    for line in data.splitlines():
-                        try:
-                            report = json.loads(line)
-                            if report['class'] == 'TPV' and 'lat' in report and 'lon' in report:
-                                return report['lat'], report['lon']
-                        except json.JSONDecodeError:
-                            logging.warning('[Weather2Pwn] Failed to decode JSON response.')
-                            continue
-                    logging.debug('[Weather2Pwn] No GPS data found in this attempt.')
-                    time.sleep(0.5)
-                logging.debug('[Weather2Pwn] No GPS data found.')
+            if not self.ensure_gpsd_running():
                 return 0, 0
-            except Exception as e:
-                logging.exception(f"[Weather2Pwn] Error getting GPS coordinates: {e}")
-                return 0, 0
-            finally:
-                gpsd_socket.close()
+            else:
+                try:
+                    gpsd_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    gpsd_socket.connect(('localhost', 2947))
+                    gpsd_socket.sendall(b'?WATCH={"enable":true,"json":true}\n')
+                    time.sleep(2)
+                    for _ in range(6):
+                        data = gpsd_socket.recv(4096).decode('utf-8')
+                        for line in data.splitlines():
+                            try:
+                                report = json.loads(line)
+                                if report['class'] == 'TPV' and 'lat' in report and 'lon' in report:
+                                    return report['lat'], report['lon']
+                            except json.JSONDecodeError:
+                                logging.warning('[Weather2Pwn] Failed to decode JSON response.')
+                                continue
+                        logging.debug('[Weather2Pwn] No GPS data found in this attempt.')
+                        time.sleep(0.5)
+                    logging.debug('[Weather2Pwn] No GPS data found.')
+                    return 0, 0
+                except Exception as e:
+                    logging.exception(f"[Weather2Pwn] Error getting GPS coordinates: {e}")
+                    return 0, 0
+                finally:
+                    gpsd_socket.close()
 
     def get_weather_by_gps(self, lat, lon, api_key):
         try:
@@ -157,7 +173,7 @@ class Weather2Pwn(plugins.Plugin):
         self.displays = self.options.get('displays', '[ "city", "temp", "sky", ]')
         self.units = self.options.get('units', '"c"')
         self.decimal = self.options.get('decimal', 'true')
-        self.gps_loc = self.options.get('gps_loc', '"/dev/ttyACM0"')
+        self.pwndroid = self.options.get('pwndroid', 'false')
         self.api_key = self.options.get('api_key', '""')
         self.getbycity = self.options.get('getbycity', 'true')
         self.city_id = self.options.get('cityid', '')
