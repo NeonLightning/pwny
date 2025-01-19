@@ -18,7 +18,7 @@ import pwnagotchi
 
 class Weather2Pwn(plugins.Plugin):
     __author__ = 'NeonLightning'
-    __version__ = '2.4.4'
+    __version__ = '2.4.5'
     __license__ = 'GPL3'
     __description__ = 'Weather display from gps data or city id, with optional logging'
 
@@ -270,7 +270,7 @@ class Weather2Pwn(plugins.Plugin):
                 if self._is_internet_available():
                     if self.loaded == True:
                         self._update_weather()
-                        self.fetch_interval = 900
+                        self.fetch_interval = self.options.get('fetch_interval', '1800')
                         if os.path.exists('/tmp/weather2pwn_data.json'):
                             with open('/tmp/weather2pwn_data.json', 'r') as f:
                                 self.weather_data = json.load(f)
