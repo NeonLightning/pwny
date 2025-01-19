@@ -11,7 +11,7 @@ The `weather2pwn` plugin retrieves weather data and displays it based on GPS coo
 | Configuration Key                        | Description                                                                                  |
 |------------------------------------------|----------------------------------------------------------------------------------------------|
 | `main.plugins.weather2pwn.log`           | Enable or disable logging of weather data. (`true` or `false`)                              |
-| `main.plugins.weather2pwn.gps_loc`       | Set the GPS device location (e.g., `/dev/ttyACM0`).                                          |
+| `main.plugins.weather2pwn.pwndroid`       | Set the GPS device from pwndroid (`true` or `false`).                                          |
 | `main.plugins.weather2pwn.cityid`        | Set the City ID from OpenWeatherMap.                                                        |
 | `main.plugins.weather2pwn.getbycity`     | Choose whether to retrieve weather data by GPS or City ID. (`true` or `false`)              |
 | `main.plugins.weather2pwn.api_key`       | Your OpenWeatherMap API key. Obtain it from [OpenWeatherMap](https://openweathermap.org/).  |
@@ -20,7 +20,8 @@ The `weather2pwn` plugin retrieves weather data and displays it based on GPS coo
 | `main.plugins.weather2pwn.displays`      | Choose which values to display (e.g., `"city", "temp", "sky"`).                           |
 
 ### Notes
-- GPS functionality requires `gpsdeasy`. Install it before enabling GPS-based weather updates.
+- GPS functionality without pwndroid requires `gpsdeasy`. Install it before enabling GPS-based weather updates.
+- Pwndroid is an android only app made by `@jayofelony`
 - If GPS is unavailable, the plugin falls back to the predefined City ID.
 
 ### Getting Started with OpenWeatherMap
