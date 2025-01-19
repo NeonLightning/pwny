@@ -18,7 +18,7 @@ import pwnagotchi
 
 class Weather2Pwn(plugins.Plugin):
     __author__ = 'NeonLightning'
-    __version__ = '2.4.3'
+    __version__ = '2.4.4'
     __license__ = 'GPL3'
     __description__ = 'Weather display from gps data or city id, with optional logging'
 
@@ -85,14 +85,16 @@ class Weather2Pwn(plugins.Plugin):
         
     def get_gps_coordinates(self):
         if self.pwndroid:
+            logging.info(f"[Weather2Pwn] attempting Pwndroid")
             server_url = f"http://192.168.44.1:8080"
             location_data = self.get_location_data(server_url)
             if location_data:
                 return location_data.get("latitude", 0), location_data.get("longitude", 0)
             else:
-                logging.warning("[PwnDroid] Failed to retrieve PwnDroid coordinates.")
+                logging.warning("[Weather2Pwn] Failed to retrieve PwnDroid coordinates.")
                 return 0, 0
         else:
+            logging.info(f"[Weather2Pwn] attempting gpsd")
             if not self.ensure_gpsd_running():
                 return 0, 0
             else:
