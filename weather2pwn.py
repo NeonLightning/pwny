@@ -172,14 +172,14 @@ class Weather2Pwn(plugins.Plugin):
 
     def on_loaded(self):
         logging.info("[Weather2Pwn] loading")
-        self.displays = self.options.get('displays', '[ "city", "temp", "sky", ]')
-        self.units = self.options.get('units', '"c"')
-        self.decimal = self.options.get('decimal', 'true')
-        self.pwndroid = self.options.get('pwndroid', 'false')
-        self.api_key = self.options.get('api_key', '""')
-        self.getbycity = self.options.get('getbycity', 'true')
+        self.displays = self.options.get('displays', [ "city", "temp", "sky", ])
+        self.units = self.options.get('units', "c")
+        self.decimal = self.options.get('decimal', True)
+        self.pwndroid = self.options.get('pwndroid', False)
+        self.api_key = self.options.get('api_key', "")
+        self.getbycity = self.options.get('getbycity', True)
         self.city_id = self.options.get('cityid', '')
-        self.weather_log = self.options.get('log', 'true')
+        self.weather_log = self.options.get('log', True)
         self.logged_lat, self.logged_long = 0, 0
         self.last_fetch_time = time.time()
         self.inetcount = 3
@@ -270,7 +270,7 @@ class Weather2Pwn(plugins.Plugin):
                 if self._is_internet_available():
                     if self.loaded == True:
                         self._update_weather()
-                        self.fetch_interval = self.options.get('fetch_interval', '1800')
+                        self.fetch_interval = self.options.get('fetch_interval', 1800)
                         if os.path.exists('/tmp/weather2pwn_data.json'):
                             with open('/tmp/weather2pwn_data.json', 'r') as f:
                                 self.weather_data = json.load(f)
