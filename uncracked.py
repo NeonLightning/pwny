@@ -98,7 +98,7 @@ class Handshake:
 
 class Uncracked(plugins.Plugin):
     __author__ = 'NeonLightning'
-    __version__ = '1.0.1'
+    __version__ = '1.0.3'
     __license__ = 'GPL3'
     __description__ = 'Download handshake not found in wpa-sec from web-ui.'
 
@@ -139,7 +139,7 @@ class Uncracked(plugins.Plugin):
         except Exception as e:
             logging.error(f"[Uncracked] error finding uncracked handshakes: {e}")
         return handshakes
-    
+
     def compress_and_send(self, extension=None):
         logging.info("[Uncracked] Compressing and sending")
         directory_to_compress = self.config['bettercap']['handshakes']
@@ -171,7 +171,6 @@ class Uncracked(plugins.Plugin):
         except Exception as e:
             logging.error(f"[Uncracked] Error compressing and sending file: {e}")
             abort(500)
-
 
     def is_in_potfile(self, ssid_bssid_ext):
         potfile_path = os.path.join(self.config['bettercap']['handshakes'], "wpa-sec.cracked.potfile")
@@ -225,7 +224,7 @@ class Uncracked(plugins.Plugin):
         dir = self.config['bettercap']['handshakes']
         try:
             logging.info(f"[Uncracked] serving {dir}/{path}")
-            response = send_from_directory(directory=dir, filename=path, as_attachment=True)
+            response = send_from_directory(directory=dir, path=path, as_attachment=True)
             response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
             response.headers['Pragma'] = 'no-cache'
             response.headers['Expires'] = '0'
