@@ -17,7 +17,6 @@ TEMPLATE = """
             font-size: 16px;
             padding: 12px 20px 12px 40px;
             border: 1px solid #ddd;
-            margin-bottom: 12px;
         }
         .button-container {
             display: flex;
@@ -40,15 +39,15 @@ TEMPLATE = """
 {% block script %}
     var shakeList = document.getElementById('list');
     var filter = document.getElementById('filter');
-    var filterVal = filter.value.toUpperCase();
-    filter.onkeyup = function() {
+    var currentExtension = "";
+    function filterList() {
         document.body.style.cursor = 'progress';
-        var table, tr, tds, td, i, txtValue;
-        filterVal = filter.value.toUpperCase();
-        li = shakeList.getElementsByTagName("li");
-        for (i = 0; i < li.length; i++) {
-            txtValue = li[i].textContent || li[i].innerText;
-            if (txtValue.toUpperCase().indexOf(filterVal) > -1) {
+        var li = shakeList.getElementsByTagName("li");
+        var filterVal = filter.value.toUpperCase();
+        for (var i = 0; i < li.length; i++) {
+            var txtValue = li[i].textContent || li[i].innerText;
+            var isVisible = li[i].dataset.originalVisible === "true";
+            if (isVisible && txtValue.toUpperCase().indexOf(filterVal) > -1) {
                 li[i].style.display = "list-item";
             } else {
                 li[i].style.display = "none";
@@ -56,7 +55,38 @@ TEMPLATE = """
         }
         document.body.style.cursor = 'default';
     }
-
+    filter.onkeyup = filterList;
+    function filterByExtension(extension) {
+        document.body.style.cursor = 'progress';
+        var li = shakeList.getElementsByTagName("li");
+        currentExtension = extension;
+        for (var i = 0; i < li.length; i++) {
+            var anchorTag = li[i].querySelector("a");
+            if (anchorTag && anchorTag.href.includes(extension)) {
+                li[i].style.display = "list-item";
+                li[i].dataset.originalVisible = "true";
+            } else {
+                li[i].style.display = "none";
+                li[i].dataset.originalVisible = "false";
+            }
+        }
+        filterList();
+        document.body.style.cursor = 'default';
+    }
+    function resetFilter() {
+        document.body.style.cursor = 'progress';
+        var li = shakeList.getElementsByTagName("li");
+        currentExtension = ""; // Clear the current filter
+        for (var i = 0; i < li.length; i++) {
+            li[i].style.display = "list-item";
+            li[i].dataset.originalVisible = "true";
+        }
+        filter.value = "";
+        document.body.style.cursor = 'default';
+    }
+    window.onload = function() {
+        resetFilter();
+    };
     function downloadHandshakes() {
         window.location.href = "/plugins/uncracked/download";
     }
@@ -77,7 +107,13 @@ TEMPLATE = """
         <button id="download-btn" onclick="downloadHandshakespcap()">Download Uncracked pcap Handshakes</button>
         <button id="download-btn" onclick="downloadHandshakes16800()">Download Uncracked 16800 Handshakes</button>
     </div>
-    <input type="text" id="filter" placeholder="Search for ..." title="Type in a filter">
+    <div class="button-container">
+        <button id="filter-btn" onclick="filterByExtension('.pcap')">Show Only .pcap</button>
+        <button id="filter-btn" onclick="filterByExtension('.22000')">Show Only .22000</button>
+        <button id="filter-btn" onclick="filterByExtension('.16800')">Show Only .16800</button>
+        <button id="filter-btn" onclick="resetFilter()">Show All</button>
+    </div>
+    <input type="text" id="filter" placeholder="Search for ...">
     <ul id="list" data-role="listview" style="list-style-type:disc;">
         {% for handshake in handshakes %}
             {% for ext in handshake.ext %}
@@ -98,7 +134,7 @@ class Handshake:
 
 class Uncracked(plugins.Plugin):
     __author__ = 'NeonLightning'
-    __version__ = '1.0.3'
+    __version__ = '1.0.4'
     __license__ = 'GPL3'
     __description__ = 'Download handshake not found in wpa-sec from web-ui.'
 
@@ -128,7 +164,7 @@ class Uncracked(plugins.Plugin):
     def find_uncracked_handshakes(self, unique_lines):
         handshakes = []
         try:
-            for ext in ['.pcap', '.2500', '.16800', '.22000']:
+            for ext in ['.pcap', '.16800', '.22000']:
                 pcapfiles = glob.glob(os.path.join(self.config['bettercap']['handshakes'], f"*{ext}"))
                 for path in pcapfiles:
                     name = os.path.basename(path)[:-len(ext)]
