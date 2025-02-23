@@ -102,15 +102,16 @@ TEMPLATE = """
 {% endblock %}
 {% block content %}
     <div class="button-container">
-        <button id="download-btn" onclick="downloadHandshakes()">Download Uncracked Handshakes</button>
-        <button id="download-btn" onclick="downloadHandshakes22000()">Download Uncracked 22000 Handshakes</button>
-        <button id="download-btn" onclick="downloadHandshakespcap()">Download Uncracked pcap Handshakes</button>
-        <button id="download-btn" onclick="downloadHandshakes16800()">Download Uncracked 16800 Handshakes</button>
+        <button id="download-btn" onclick="downloadHandshakespcap()">Download pcap Handshakes</button>
+        <button id="download-btn" onclick="downloadHandshakes22000()">Download 22000 Handshakes</button>
+        <button id="download-btn" onclick="downloadHandshakes16800()">Download 16800 Handshakes</button>
+        <button id="download-btn" onclick="downloadHandshakes()">Download All Uncracked Handshakes</button>
     </div>
+    Filters
     <div class="button-container">
-        <button id="filter-btn" onclick="filterByExtension('.pcap')">Show Only .pcap</button>
-        <button id="filter-btn" onclick="filterByExtension('.22000')">Show Only .22000</button>
-        <button id="filter-btn" onclick="filterByExtension('.16800')">Show Only .16800</button>
+        <button id="filter-btn" onclick="filterByExtension('.pcap')">.pcap</button>
+        <button id="filter-btn" onclick="filterByExtension('.22000')">.22000</button>
+        <button id="filter-btn" onclick="filterByExtension('.16800')">.16800</button>
         <button id="filter-btn" onclick="resetFilter()">Show All</button>
     </div>
     <input type="text" id="filter" placeholder="Search for ...">
@@ -134,7 +135,7 @@ class Handshake:
 
 class Uncracked(plugins.Plugin):
     __author__ = 'NeonLightning'
-    __version__ = '1.0.4'
+    __version__ = '1.0.5'
     __license__ = 'GPL3'
     __description__ = 'Download handshake not found in wpa-sec from web-ui.'
 
@@ -153,7 +154,7 @@ class Uncracked(plugins.Plugin):
         try:
             with open(potfile_path, 'r') as file_in:
                 lines = file_in.readlines()
-            return set(tuple(line.split(":")[2:4]) for line in lines if line.strip())
+            return set((line.split(":")[2].replace("_", "").replace(" ", ""), line.split(":")[0]) for line in lines if line.strip())
         except FileNotFoundError:
             logging.error("[Uncracked] potfile not found")
             return set()
@@ -169,13 +170,18 @@ class Uncracked(plugins.Plugin):
                 for path in pcapfiles:
                     name = os.path.basename(path)[:-len(ext)]
                     fullpathNoExt = path[:-len(ext)]
-                    if not any(f"{ssid}_{bssid}" in name for ssid, bssid in unique_lines):
+                    parts = name.split('_')
+                    if len(parts) < 2:
+                        continue 
+                    ssid = parts[0]
+                    bssid = parts[1]
+                    if not any(f"{potfile_ssid}_{potfile_bssid}" == f"{ssid}_{bssid}" for potfile_ssid, potfile_bssid in unique_lines):
                         handshakes.append(Handshake(name, fullpathNoExt, [ext]))
             handshakes = sorted(handshakes, key=lambda x: x.name.lower())
         except Exception as e:
             logging.error(f"[Uncracked] error finding uncracked handshakes: {e}")
         return handshakes
-
+    
     def compress_and_send(self, extension=None):
         logging.info("[Uncracked] Compressing and sending")
         directory_to_compress = self.config['bettercap']['handshakes']
@@ -216,7 +222,7 @@ class Uncracked(plugins.Plugin):
             lines = [line.strip() for line in lines if line.strip()]
             for line in lines:
                 fields = line.split(":")
-                ssid = fields[2]
+                ssid = fields[2].replace("_", "").replace(" ", "")
                 bssid = fields[0]
                 if f"{ssid}_{bssid}" in ssid_bssid_ext:
                     return True
