@@ -19,7 +19,10 @@ import pwnagotchi.plugins as plugins
 import pwnagotchi
 
 TEMPLATE = """
+{% extends "base.html" %}
+{% set active_page = "plugins" %}
 {% block styles %}
+{{ super() }}
 <style>
     body {
         font-family: Arial, sans-serif;
@@ -167,8 +170,8 @@ class Weather2Pwn(plugins.Plugin):
     def get_location_data(self, server_url):
         try:
             response = requests.get(server_url)
-            response.raise_for_status()  # Raise an exception for HTTP errors
-            return response.json()  # Parse the JSON response
+            response.raise_for_status()
+            return response.json()
         except requests.exceptions.RequestException as e:
             logging.warning(f"Error connecting to the server: {e}")
             return None
