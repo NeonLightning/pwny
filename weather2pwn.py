@@ -7,18 +7,108 @@
 #main.plugins.weather2pwn.api_key = "API_KEY" # openweathermap.org api key
 #main.plugins.weather2pwn.decimal = "true" # include 2 decimal places for the temperature
 #main.plugins.weather2pwn.units = "c" or "f" to determine celsius or fahrenheit
-#main.plugins.weather2pwn.displays = [ "city", "temp", "sky", ] # display these values on the screen
+#main.plugins.weather2pwn.position = "0, 48" # set the position
+#main.plugins.weather2pwn.displays = [ "city", "temp", "feels", "sky", "wind", "humidity", "visibility", ] # display these values on the screen
 
-import socket, json, requests, logging, os, time, toml, subprocess, datetime
+import socket, json, requests, logging, os, time, subprocess, datetime
 from pwnagotchi.ui.components import LabeledValue
 from pwnagotchi.ui.view import BLACK
+from flask import abort, render_template_string, make_response
 import pwnagotchi.ui.fonts as fonts
 import pwnagotchi.plugins as plugins
 import pwnagotchi
 
+TEMPLATE = """
+{% block styles %}
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+    }
+    .container {
+        width: 100%;
+    }
+    h1 {
+        text-align: center;
+        color: #333;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1rem 0;
+        table-layout: auto;
+    }
+    th, td {
+        padding: 12px;
+        border: 1px solid #ddd;
+        text-align: left;
+        word-wrap: break-word;
+        white-space: normal;
+    }
+    th {
+        font-weight: bold;
+    }
+    ul {
+        list-style-type: none;
+        padding-left: 0;
+        margin: 0;
+    }
+    .table-container {
+        width: 100%;
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="container">
+    <h1>Weather Data</h1>
+    <div class="table-container">
+        {% macro render_table(data) %}
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 30%;">Key</th>
+                        <th style="width: 70%;">Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for key, value in data.items() %}
+                        <tr>
+                            <td>{{ key }}</td>
+                            <td>
+                            {% if value is mapping %}
+                                {{ render_table(value) }}
+                            {% elif value is iterable and value is not string %}
+                                <ul>
+                                {% for item in value %}
+                                    <li>
+                                    {% if item is mapping %}
+                                        {{ render_table(item) }}
+                                    {% else %}
+                                        {{ item }}
+                                    {% endif %}
+                                    </li>
+                                {% endfor %}
+                                </ul>
+                            {% else %}
+                                {{ value }}
+                            {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endmacro %}
+        
+        {{ render_table(weather_json) }}
+    </div>
+</div>
+{% endblock %}
+"""
+
 class Weather2Pwn(plugins.Plugin):
     __author__ = 'NeonLightning'
-    __version__ = '2.4.5'
+    __version__ = '2.4.6'
     __license__ = 'GPL3'
     __description__ = 'Weather display from gps data or city id, with optional logging'
 
@@ -153,8 +243,8 @@ class Weather2Pwn(plugins.Plugin):
     def store_weather_data(self):
         if self.weather_log == True:
             self.current_date = datetime.datetime.now().strftime("%Y-%m-%d")
-            file_path = f'/root/weather/weather2pwn_data_{self.current_date}.json'
-            directory = "/root/weather/"
+            file_path = f'/home/pi/weather/weather2pwn_data_{self.current_date}.json'
+            directory = "/home/pi/weather/"
             logging.info(f"[Weather2Pwn] Logging to {file_path}")
             data_to_store = {
                 "time": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -172,7 +262,7 @@ class Weather2Pwn(plugins.Plugin):
 
     def on_loaded(self):
         logging.info("[Weather2Pwn] loading")
-        self.displays = self.options.get('displays', [ "city", "temp", "sky", ])
+        self.displays = self.options.get('displays', [ "city", "temp", "feels", "humidity", "sky", ])
         self.units = self.options.get('units', "c")
         self.decimal = self.options.get('decimal', True)
         self.pwndroid = self.options.get('pwndroid', False)
@@ -180,6 +270,7 @@ class Weather2Pwn(plugins.Plugin):
         self.getbycity = self.options.get('getbycity', True)
         self.city_id = self.options.get('cityid', '')
         self.weather_log = self.options.get('log', True)
+        self.position = self.options.get('position', "0, 48")
         self.logged_lat, self.logged_long = 0, 0
         self.last_fetch_time = time.time()
         self.inetcount = 3
@@ -197,19 +288,40 @@ class Weather2Pwn(plugins.Plugin):
 
     def on_ui_setup(self, ui):
         if 'city' in self.displays:
-            pos1 = (150, 37)
+            self.position = tuple(map(int, self.position.split(','))) 
+            pos1 = self.position
             ui.add_element('city', LabeledValue(color=BLACK, label='', value='loading',
                                                 position=pos1,
-                                                label_font=fonts.Small, text_font=fonts.Small))
+                                                label_font=fonts.Small, text_font=fonts.Small, label_spacing=0))
         if 'temp' in self.displays:
-            pos2 = (155, 47)
-            ui.add_element('feels_like', LabeledValue(color=BLACK, label='Tmp:', value='loading',
-                                                    position=pos2,
+            pos1 = (pos1[0], pos1[1] + 10)
+            ui.add_element('temp', LabeledValue(color=BLACK, label='Temp:', value='loading',
+                                                    position=pos1,
+                                                    label_font=fonts.Small, text_font=fonts.Small))
+        if 'feels' in self.displays:
+            pos1 = (pos1[0], pos1[1] + 10)
+            ui.add_element('feels', LabeledValue(color=BLACK, label='Feel:', value='loading',
+                                                    position=pos1,
+                                                    label_font=fonts.Small, text_font=fonts.Small))
+        if 'wind' in self.displays:
+            pos1 = (pos1[0], pos1[1] + 10)
+            ui.add_element('wind', LabeledValue(color=BLACK, label='Wind:', value='loading',
+                                                    position=pos1,
+                                                    label_font=fonts.Small, text_font=fonts.Small))
+        if 'humidity' in self.displays:
+            pos1 = (pos1[0], pos1[1] + 10)
+            ui.add_element('humidity', LabeledValue(color=BLACK, label='Hum :', value='loading',
+                                                    position=pos1,
                                                     label_font=fonts.Small, text_font=fonts.Small))
         if 'sky' in self.displays:
-            pos3 = (155, 57)
-            ui.add_element('weather', LabeledValue(color=BLACK, label='Sky :', value='loading',
-                                                    position=pos3,
+            pos1 = (pos1[0], pos1[1] + 10)
+            ui.add_element('sky', LabeledValue(color=BLACK, label='Sky :', value='loading',
+                                                    position=pos1,
+                                                    label_font=fonts.Small, text_font=fonts.Small))
+        if 'visibility' in self.displays:
+            pos1 = (pos1[0], pos1[1] + 10)
+            ui.add_element('vis', LabeledValue(color=BLACK, label='Vis :', value='loading',
+                                                    position=pos1,
                                                     label_font=fonts.Small, text_font=fonts.Small))
 
     def _update_weather(self):
@@ -275,42 +387,85 @@ class Weather2Pwn(plugins.Plugin):
                             with open('/tmp/weather2pwn_data.json', 'r') as f:
                                 self.weather_data = json.load(f)
                         if self.weather_data:
-                            if "name" in self.weather_data:
+                            if 'city' in self.displays:
                                 city_name = self.weather_data["name"]
-                                if 'city' in self.displays:
-                                    ui.set('city', f"{city_name}")
-                            if "main" in self.weather_data and "feels_like" in self.weather_data["main"]:
+                                ui.set('city', f"{city_name}")
+                            if 'temp' in self.displays: 
+                                temp = self.weather_data["main"]["temp"]
+                                if not self.decimal:
+                                    temp = round(temp)
+                                if self.units == "c":
+                                    ui.set('temp', f"{temp}°C")
+                                elif self.units == "f":
+                                    temp = (temp * 9/5) + 32
+                                    temp = round(temp)
+                                    ui.set('temp', f"{temp}°F")
+                            if 'feels' in self.displays: 
                                 feels_like = self.weather_data["main"]["feels_like"]
-                                if 'temp' in self.displays: 
-                                    if not self.decimal:
-                                        feels_like = round(feels_like)
-                                    if self.units == "c":
-                                        ui.set('feels_like', f"{feels_like}°C")
-                                    elif self.units == "f":
-                                        feels_like = (feels_like * 9/5) + 32
-                                        feels_like = round(feels_like)
-                                        ui.set('feels_like', f"{feels_like}°F")
-                            if "weather" in self.weather_data and len(self.weather_data["weather"]) > 0:
+                                if not self.decimal:
+                                    feels_like = round(feels_like)
+                                if self.units == "c":
+                                    ui.set('feels', f"{feels_like}°C")
+                                elif self.units == "f":
+                                    feels_like = (feels_like * 9/5) + 32
+                                    feels_like = round(feels_like)
+                                    ui.set('feels', f"{feels_like}°F")
+                            if 'wind' in self.displays:
+                                wind_speed = self.weather_data["wind"]["speed"]
+                                ui.set('wind', f"{wind_speed}m/s")
+                            if 'humidity' in self.displays:
+                                humidity = self.weather_data["main"]["humidity"]
+                                ui.set('humidity', f"{humidity}%")
+                            if "sky" in self.displays:
                                 main_weather = self.weather_data["weather"][0]["main"]
-                                if 'sky' in self.displays:
-                                    ui.set('weather', f"{main_weather}")
+                                ui.set('sky', f"{main_weather}")
+                            if 'visibility' in self.displays:
+                                vis = self.weather_data["visibility"]
+                                ui.set('vis', f"{vis}m")
                 else:
                     self.fetch_interval = 180
                     if 'city' in self.displays:
                         ui.set('city', 'No Network')
                     if 'temp' in self.displays:
-                        ui.set('feels_like', '')
+                        ui.set('temp', '')
+                    if 'feels' in self.displays:
+                        ui.set('feels', '')
+                    if 'humidity' in self.displays:
+                        ui.set('humidity', '')
+                    if 'wind' in self.displays:
+                        ui.set('wind', '')
                     if 'sky' in self.displays:
-                        ui.set('weather', '')
+                        ui.set('sky', '')
+                    if 'visibility' in self.displays:
+                        ui.set('vis', '')
 
     def on_unload(self, ui):
         self.running = False
         if os.path.exists("/tmp/weather2pwn_data.json"):
             os.remove("/tmp/weather2pwn_data.json")
         with ui._lock:
-            for element in ['city', 'feels_like', 'weather']:
+            for element in ['city', 'temp', 'feels', 'humidity', 'wind', 'sky', "vis"]:
                 try:
                     ui.remove_element(element)
                 except KeyError:
                     pass
             logging.info("[Weather2Pwn] Unloaded")
+
+    def on_webhook(self, path, request):
+        try:
+            if not self.weather_data:
+                return "Plugin not ready"
+            if path == "/" or not path:
+                logging.info("[Weather2Pwn] Loaded webhook")
+                if isinstance(self.weather_data, str):
+                    try:
+                        weather_data = json.loads(self.weather_data)
+                    except Exception as e:
+                        logging.error(f"Failed to parse weather_data: {e}")
+                        weather_data = {"error": "Invalid JSON"}
+                else:
+                    weather_data = self.weather_data
+                return render_template_string(TEMPLATE, title="Weather2Pwn", weather_json=weather_data)
+        except Exception as e:
+            logging.error(f"[Weather2Pwn] error in webhook: {e}")
+            abort(500)
