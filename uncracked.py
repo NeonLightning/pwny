@@ -154,7 +154,7 @@ class Uncracked(plugins.Plugin):
         try:
             with open(potfile_path, 'r') as file_in:
                 lines = file_in.readlines()
-            return set((line.split(":")[2].replace("_", "").replace(" ", ""), line.split(":")[0]) for line in lines if line.strip())
+            return set((line.split(":")[2].replace("_", "").replace(" ", "").replace(".", ""), line.split(":")[0]) for line in lines if line.strip())
         except FileNotFoundError:
             logging.error("[Uncracked] potfile not found")
             return set()
@@ -222,7 +222,7 @@ class Uncracked(plugins.Plugin):
             lines = [line.strip() for line in lines if line.strip()]
             for line in lines:
                 fields = line.split(":")
-                ssid = fields[2].replace("_", "").replace(" ", "")
+                ssid = fields[2].replace("_", "").replace(" ", "").replace(".", "")
                 bssid = fields[0]
                 if f"{ssid}_{bssid}" in ssid_bssid_ext:
                     return True
