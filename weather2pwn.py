@@ -149,7 +149,7 @@ class Weather2Pwn(plugins.Plugin):
                 self.errortries = 0
                 return data
             else:
-                while self.errortries == 3:
+                while self.errortries <= 4:
                     logging.info(f"[Weather2Pwn] Error fetching weather data attempt {self.errortries}")
                     time.sleep(1)
                     self.errortries += 1
@@ -158,7 +158,7 @@ class Weather2Pwn(plugins.Plugin):
                 self.errortries = 0
                 return None
         except Exception as e:
-            while self.errortries == 3:
+            while self.errortries <= 4:
                 logging.info(f"[Weather2Pwn] Error fetching weather data attempt {self.errortries}")
                 time.sleep(1)
                 self.errortries += 1
