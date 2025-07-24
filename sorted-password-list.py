@@ -313,8 +313,14 @@ class SortedPasswordList(plugins.Plugin):
         try:
             lineswpa = []
             linesrc = []
+            linespwc = []
             lineswpa2 = []
             linesrc2 = []
+            if os.path.exists('/home/pi/handshakes/cracked.pwncrack.potfile'):
+                with open('/home/pi/handshakes/cracked.pwncrack.potfile', 'r') as file_in:
+                    linespwc = [(line.strip(), 'cracked.pwncrack.potfile') for line in file_in.readlines() if line.strip()]
+            else:
+                pass
             if os.path.exists('/home/pi/handshakes/wpa-sec.cracked.potfile'):
                 with open('/home/pi/handshakes/wpa-sec.cracked.potfile', 'r') as file_in:
                     lineswpa = [(line.strip(), 'wpa-sec.cracked.potfile') for line in file_in.readlines() if line.strip()]
@@ -339,6 +345,21 @@ class SortedPasswordList(plugins.Plugin):
                 logging.info("[Sorted-Password-List] no potfiles found")
                 return []
             unique_lines = set()
+            for line, filename in linespwc:
+                fields = line.split(":")
+                entry = (fields[1], fields[3], fields[4])
+                if entry not in unique_lines:
+                    unique_lines.add(entry)
+                    passwords.append({
+                        "ssid": entry[1],
+                        "bssid": entry[0],
+                        "password": entry[2],
+                        "filename": filename,
+                        "lat": None,
+                        "lng": None,
+                        "google_maps_link": None,
+                        "rssi": None
+                    })
             for line, filename in lineswpa:
                 fields = line.split(":")
                 entry = (fields[0], fields[2], fields[3])
