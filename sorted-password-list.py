@@ -140,50 +140,6 @@ TEMPLATE = """
             }
         }
     }
-    function defaultSort() {
-        const headers = document.querySelectorAll("#tableOptions th.sortable");
-        let strengthCol = -1, distanceCol = -1, ssidCol = -1;
-        headers.forEach((th, index) => {
-            const header = th.textContent.trim();
-            if (header === "Strength") strengthCol = index;
-            if (header === "Distance") distanceCol = index;
-            if (header === "SSID") ssidCol = index;
-        });
-        if (strengthCol !== -1 || distanceCol !== -1 || ssidCol !== -1) {
-            sortTableCompound(strengthCol, distanceCol, ssidCol);
-        }
-    }
-    function sortTableCompound(strengthCol, distanceCol, ssidCol) {
-        const table = document.getElementById("tableOptions");
-        const rows = Array.from(table.rows).slice(1);
-        rows.sort((a, b) => {
-            if (strengthCol !== -1) {
-                const aStrength = parseInt(a.cells[strengthCol].textContent.trim(), 10);
-                const bStrength = parseInt(b.cells[strengthCol].textContent.trim(), 10);
-                const validA = !isNaN(aStrength);
-                const validB = !isNaN(bStrength);
-                if (validA && validB && aStrength !== bStrength) {
-                    return bStrength - aStrength;
-                } else if (validA !== validB) {
-                    return validA ? -1 : 1;
-                }
-            }
-            if (distanceCol !== -1) {
-                const aDist = parseDistance(a.cells[distanceCol].textContent.trim());
-                const bDist = parseDistance(b.cells[distanceCol].textContent.trim());
-                if (aDist !== bDist) {
-                    return aDist - bDist;
-                }
-            }
-            if (ssidCol !== -1) {
-                const aSSID = a.cells[ssidCol].textContent.trim();
-                const bSSID = b.cells[ssidCol].textContent.trim();
-                return aSSID.localeCompare(bSSID, undefined, { numeric: true });
-            }
-            return 0;
-        });
-        rows.forEach(row => table.appendChild(row));
-    }
     function parseDistance(distanceStr) {
         if (distanceStr === "Unknown") return Infinity;
         var parts = distanceStr.split(" ");
@@ -191,37 +147,111 @@ TEMPLATE = """
         if (parts[1] === "km") return num * 1000;
         return num;
     }
-    window.onload = defaultSort;
-    document.querySelectorAll("th.sortable").forEach(function(th, index) {
-        th.addEventListener("click", function() {
-            sortTable(index);
+    function parseStrength(strengthStr) {
+        const num = parseInt(strengthStr);
+        return isNaN(num) ? -9999 : num;
+    }
+    var currentSortColumn = -1;
+    var currentSortDirection = 'asc';
+    function applyDefaultSort() {
+        const table = document.getElementById("tableOptions");
+        const headers = table.getElementsByTagName("th");
+        let strengthCol = -1, distanceCol = -1, ssidCol = -1;
+        for (let i = 0; i < headers.length; i++) {
+            const header = headers[i].textContent.trim().replace(' ↑', '').replace(' ↓', '');
+            if (header === "Strength") strengthCol = i;
+            else if (header === "Distance") distanceCol = i;
+            else if (header === "SSID") ssidCol = i;
+        }
+        if (strengthCol !== -1 || distanceCol !== -1 || ssidCol !== -1) {
+            const rows = Array.from(table.rows).slice(1);
+            rows.sort((a, b) => {
+                if (strengthCol !== -1) {
+                    const aStrength = parseStrength(a.cells[strengthCol].textContent.trim());
+                    const bStrength = parseStrength(b.cells[strengthCol].textContent.trim());
+                    if (aStrength !== bStrength) return bStrength - aStrength;
+                }
+                if (distanceCol !== -1) {
+                    const aDist = parseDistance(a.cells[distanceCol].textContent.trim());
+                    const bDist = parseDistance(b.cells[distanceCol].textContent.trim());
+                    if (aDist !== bDist) return aDist - bDist;
+                }
+                if (ssidCol !== -1) {
+                    const aSSID = a.cells[ssidCol].textContent.trim();
+                    const bSSID = b.cells[ssidCol].textContent.trim();
+                    return aSSID.localeCompare(bSSID, undefined, { numeric: true });
+                }
+                return 0;
+            });
+            while (table.rows.length > 1) table.deleteRow(1);
+            rows.forEach(row => table.appendChild(row));
+        }
+    }
+    function sortTable(columnIndex) {
+        const table = document.getElementById("tableOptions");
+        const headers = table.getElementsByTagName("th");
+        const rows = Array.from(table.rows).slice(1);
+        if (columnIndex === currentSortColumn) {
+            currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            currentSortColumn = columnIndex;
+            currentSortDirection = 'asc';
+        }
+        for (let i = 0; i < headers.length; i++) {
+            headers[i].innerHTML = headers[i].innerHTML.replace(' ↑', '').replace(' ↓', '');
+        }
+        const indicator = currentSortDirection === 'asc' ? ' ↑' : ' ↓';
+        headers[columnIndex].innerHTML += indicator;
+        const dataType = headers[columnIndex].getAttribute('data-type');
+        let parser;
+        if (dataType === 'distance') parser = parseDistance;
+        else if (dataType === 'strength') parser = parseStrength;
+        else parser = val => val;
+        rows.sort((a, b) => {
+            const aVal = parser(a.cells[columnIndex].textContent.trim());
+            const bVal = parser(b.cells[columnIndex].textContent.trim());
+            let comparison = 0;
+            if (typeof aVal === 'number' && typeof bVal === 'number') {
+                comparison = aVal - bVal;
+            } else {
+                comparison = String(aVal).localeCompare(String(bVal), undefined, {numeric: true});
+            }
+            return currentSortDirection === 'asc' ? comparison : -comparison;
         });
-    });
+        while (table.rows.length > 1) table.deleteRow(1);
+        rows.forEach(row => table.appendChild(row));
+    }
+    window.onload = function() {
+        applyDefaultSort();
+        document.querySelectorAll("th.sortable").forEach((th, index) => {
+            th.addEventListener("click", () => sortTable(index));
+        });
+    };
 {% endblock %}
 {% block content %}
     <input type="text" id="searchText" placeholder="Search for ..." title="Type in a filter">
     <table id="tableOptions">
         <tr>
             {% if ssid_display %}
-                <th class="sortable">SSID</th>
+                <th class="sortable" data-type="string">SSID</th>
             {% endif %}
             {% if bssid_display %}
-                <th class="sortable">BSSID</th>
+                <th class="sortable" data-type="string">BSSID</th>
             {% endif %}
             {% if password_display %}
-                <th class="sortable">Password</th>
+                <th class="sortable" data-type="string">Password</th>
             {% endif %}
             {% if origin_display %}
-                <th class="sortable">Origin</th>
+                <th class="sortable" data-type="string">Origin</th>
             {% endif %}
             {% if distance_display %}
-                <th class="sortable">Distance</th>
+                <th class="sortable" data-type="distance">Distance</th>
             {% endif %}
             {% if gps_display %}
-                <th class="sortable">GPS</th>
+                <th class="sortable" data-type="string">GPS</th>
             {% endif %}
             {% if strength_display %}
-                <th class="sortable">Strength</th>
+                <th class="sortable" data-type="strength">Strength</th>
             {% endif %}
         </tr>
         {% for p in passwords %}
