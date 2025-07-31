@@ -13,7 +13,7 @@
 # main.plugins.sorted-password-list.qr_display = True or False
 # you will need to sudo apt install python3-qrcode
 
-import logging, os, json, re, pwnagotchi, tempfile
+import logging, os, json, re, pwnagotchi, tempfile, socket, time, math
 from pwnagotchi.ui.components import LabeledValue
 from pwnagotchi.ui.view import BLACK
 import pwnagotchi.ui.fonts as fonts
@@ -140,51 +140,56 @@ TEMPLATE = """
             }
         }
     }
-    function sortTable(columnIndex, defaultDirection = 'asc') {
-        var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
-        table = document.getElementById("tableOptions");
-        switching = true;
-        dir = defaultDirection;
-        while (switching) {
-            switching = false;
-            rows = table.rows;
-            for (i = 1; i < (rows.length - 1); i++) {
-                shouldSwitch = false;
-                x = rows[i].getElementsByTagName("TD")[columnIndex];
-                y = rows[i + 1].getElementsByTagName("TD")[columnIndex];
-
-                if (dir === "asc") {
-                    if (x.textContent.toLowerCase() > y.textContent.toLowerCase()) {
-                        shouldSwitch = true;
-                        break;
-                    }
-                } else if (dir === "desc") {
-                    if (x.textContent.toLowerCase() < y.textContent.toLowerCase()) {
-                        shouldSwitch = true;
-                        break;
-                    }
-                }
-            }
-            if (shouldSwitch) {
-                rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
-                switching = true;
-                switchcount++;
-            } else {
-                if (switchcount === 0 && dir === "asc") {
-                    dir = "desc";
-                    switching = true;
-                }
-            }
+    function defaultSort() {
+        const headers = document.querySelectorAll("#tableOptions th.sortable");
+        let strengthCol = -1, distanceCol = -1, ssidCol = -1;
+        headers.forEach((th, index) => {
+            const header = th.textContent.trim();
+            if (header === "Strength") strengthCol = index;
+            if (header === "Distance") distanceCol = index;
+            if (header === "SSID") ssidCol = index;
+        });
+        if (strengthCol !== -1 || distanceCol !== -1 || ssidCol !== -1) {
+            sortTableCompound(strengthCol, distanceCol, ssidCol);
         }
     }
-    function defaultSort() {
-        var rssiColumnIndex = 5;
-        var ssidColumnIndex = 0;
-        var table = document.getElementById("tableOptions");
-        var hasRSSI = Array.from(table.getElementsByTagName("tr")).some(function(row) {
-            return row.getElementsByTagName("td")[rssiColumnIndex] && row.getElementsByTagName("td")[rssiColumnIndex].textContent.trim() !== "not nearby";
+    function sortTableCompound(strengthCol, distanceCol, ssidCol) {
+        const table = document.getElementById("tableOptions");
+        const rows = Array.from(table.rows).slice(1);
+        rows.sort((a, b) => {
+            if (strengthCol !== -1) {
+                const aStrength = parseInt(a.cells[strengthCol].textContent.trim(), 10);
+                const bStrength = parseInt(b.cells[strengthCol].textContent.trim(), 10);
+                const validA = !isNaN(aStrength);
+                const validB = !isNaN(bStrength);
+                if (validA && validB && aStrength !== bStrength) {
+                    return bStrength - aStrength;
+                } else if (validA !== validB) {
+                    return validA ? -1 : 1;
+                }
+            }
+            if (distanceCol !== -1) {
+                const aDist = parseDistance(a.cells[distanceCol].textContent.trim());
+                const bDist = parseDistance(b.cells[distanceCol].textContent.trim());
+                if (aDist !== bDist) {
+                    return aDist - bDist;
+                }
+            }
+            if (ssidCol !== -1) {
+                const aSSID = a.cells[ssidCol].textContent.trim();
+                const bSSID = b.cells[ssidCol].textContent.trim();
+                return aSSID.localeCompare(bSSID, undefined, { numeric: true });
+            }
+            return 0;
         });
-        sortTable(hasRSSI ? rssiColumnIndex : ssidColumnIndex);
+        rows.forEach(row => table.appendChild(row));
+    }
+    function parseDistance(distanceStr) {
+        if (distanceStr === "Unknown") return Infinity;
+        var parts = distanceStr.split(" ");
+        var num = parseFloat(parts[0]);
+        if (parts[1] === "km") return num * 1000;
+        return num;
     }
     window.onload = defaultSort;
     document.querySelectorAll("th.sortable").forEach(function(th, index) {
@@ -208,6 +213,9 @@ TEMPLATE = """
             {% endif %}
             {% if origin_display %}
                 <th class="sortable">Origin</th>
+            {% endif %}
+            {% if distance_display %}
+                <th class="sortable">Distance</th>
             {% endif %}
             {% if gps_display %}
                 <th class="sortable">GPS</th>
@@ -238,6 +246,15 @@ TEMPLATE = """
                 {% if origin_display %}
                     <td data-label="Origin">{{ p["filename"] }}</td>
                 {% endif %}
+                {% if distance_display %}
+                    <td data-label="Distance">
+                        {% if p["distance"] %}
+                            {{ p["distance"] }}
+                        {% else %}
+                            Unknown
+                        {% endif %}
+                    </td>
+                {% endif %}
                 {% if gps_display %}
                     <td data-label="GPS">
                         {% if p["lat"] and p["lng"] %}
@@ -262,7 +279,6 @@ TEMPLATE = """
 {% endblock %}
 """
 
-
 class SortedPasswordList(plugins.Plugin):
     __author__ = 'neonlightning'
     __version__ = '2.0.9'
@@ -274,14 +290,25 @@ class SortedPasswordList(plugins.Plugin):
         self.count = 0
         self.show_number = True
         self.qr_display = False
-        self.fields = ['ssid', 'bssid', 'password', 'origin', 'gps', 'strength']
+        self.fields = ['ssid', 'bssid', 'password', 'origin', 'distance', 'gps', 'strength']
         self.sorted_aps = []
         self.rssi_data = {}
         self._agent = None
         self.keep_qr = False
+        self.trackgps = False
+        self.gps_socket = None
+        self.last_gps_fix = (0, 0)
+        self.gps_last_update = 0
+        self.last_update = time.time()
+        self.last_gps_update = 0
+        self.curr_gps_lat = 0
+        self.curr_gps_lon = 0
+        self.last_gps = (0, 0)
 
     def on_ready(self, agent):
         self._agent = agent
+        if self.distance_display: 
+            self._update_gps_and_distances()
         logging.info("[Sorted-Password-List] plugin loaded")
 
     def on_loaded(self):
@@ -291,13 +318,14 @@ class SortedPasswordList(plugins.Plugin):
         except ImportError:
             qr_library_available = False
         try:
-            self.fields = self.options.get('fields', ['ssid', 'bssid', 'password', 'origin', 'gps', 'strength'])
+            self.fields = self.options.get('fields', ['ssid', 'bssid', 'password', 'origin', 'distance', 'gps', 'strength'])
             self.show_number = self.options.get('show_number', True)
             self.keep_qr = self.options.get('keep_qr', False)
             self.ssid_display = 'ssid' in self.fields
             self.bssid_display = 'bssid' in self.fields
             self.password_display = 'password' in self.fields
             self.origin_display = 'origin' in self.fields
+            self.distance_display = 'distance' in self.fields
             self.gps_display = 'gps' in self.fields
             self.strength_display = 'strength' in self.fields
             if qr_library_available:
@@ -314,8 +342,6 @@ class SortedPasswordList(plugins.Plugin):
             lineswpa = []
             linesrc = []
             linespwc = []
-            lineswpa2 = []
-            linesrc2 = []
             if os.path.exists('/home/pi/handshakes/cracked.pwncrack.potfile'):
                 with open('/home/pi/handshakes/cracked.pwncrack.potfile', 'r') as file_in:
                     linespwc = [(line.strip(), 'cracked.pwncrack.potfile') for line in file_in.readlines() if line.strip()]
@@ -326,22 +352,12 @@ class SortedPasswordList(plugins.Plugin):
                     lineswpa = [(line.strip(), 'wpa-sec.cracked.potfile') for line in file_in.readlines() if line.strip()]
             else:
                 pass
-            if os.path.exists('/root/handshakes/wpa-sec.cracked.potfile'):
-                with open('/root/handshakes/wpa-sec.cracked.potfile', 'r') as file_in:
-                    lineswpa = [(line.strip(), 'wpa-sec.cracked.potfile') for line in file_in.readlines() if line.strip()]
-            else:
-                pass
             if os.path.exists('/home/pi/handshakes/remote_cracking.potfile'):
                 with open('/home/pi/handshakes/remote_cracking.potfile', 'r') as file_in:
                     linesrc = [(line.strip(), 'remote_cracking.potfile') for line in file_in.readlines() if line.strip()]
             else:
                 pass
-            if os.path.exists('/root/handshakes/remote_cracking.potfile'):
-                with open('/root/handshakes/remote_cracking.potfile', 'r') as file_in:
-                    linesrc2 = [(line.strip(), 'remote_cracking.potfile') for line in file_in.readlines() if line.strip()]
-            else:
-                pass
-            if not lineswpa and not linesrc and not lineswpa2 and not linesrc2:
+            if not lineswpa and not linesrc and not linespwc:
                 logging.info("[Sorted-Password-List] no potfiles found")
                 return []
             unique_lines = set()
@@ -355,6 +371,7 @@ class SortedPasswordList(plugins.Plugin):
                         "bssid": entry[0],
                         "password": entry[2],
                         "filename": filename,
+                        "distance": None,
                         "lat": None,
                         "lng": None,
                         "google_maps_link": None,
@@ -370,6 +387,7 @@ class SortedPasswordList(plugins.Plugin):
                         "bssid": entry[0],
                         "password": entry[2],
                         "filename": filename,
+                        "distance": None,
                         "lat": None,
                         "lng": None,
                         "google_maps_link": None,
@@ -385,6 +403,7 @@ class SortedPasswordList(plugins.Plugin):
                         "bssid": entry[0],
                         "password": entry[2],
                         "filename": filename,
+                        "distance": None,
                         "lat": None,
                         "lng": None,
                         "google_maps_link": None,
@@ -395,10 +414,70 @@ class SortedPasswordList(plugins.Plugin):
             logging.exception(f"[Sorted-Password-List] error while loading passwords: {repr(err)}")
             return []
 
+    def _current_gps(self):
+        try:
+            if self.gps_socket is None:
+                self.gps_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.gps_socket.settimeout(5.0)
+                try:
+                    self.gps_socket.connect(('localhost', 2947))
+                    self.gps_socket.sendall(b'?WATCH={"enable":true,"json":true}\n')
+                    time.sleep(0.5)
+                except (ConnectionRefusedError, socket.timeout) as e:
+                    logging.debug(f"[Sorted-Password-List] GPSd connection failed: {e}")
+                    self.gps_socket = None
+                    return 0, 0
+            self.gps_socket.settimeout(1.0)
+            try:
+                data = self.gps_socket.recv(4096).decode('utf-8')
+                if not data:
+                    raise ConnectionResetError("Empty response from GPSd")
+                for line in data.splitlines():
+                    try:
+                        report = json.loads(line)
+                        if report.get('class') == 'TPV':
+                            lat = report.get('lat')
+                            lon = report.get('lon')
+                            if lat is not None and lon is not None:
+                                self.last_gps_fix = (lat, lon)
+                                self.gps_last_update = time.time()
+                                return lat, lon
+                    except (json.JSONDecodeError, KeyError):
+                        continue
+                if time.time() - self.gps_last_update < 30:
+                    return self.last_gps_fix
+                return 0, 0
+            except (socket.timeout, ConnectionResetError, BrokenPipeError) as e:
+                logging.debug(f"[Sorted-Password-List] GPS read error: {e}")
+                self.gps_socket = None
+                if time.time() - self.gps_last_update < 30:
+                    return self.last_gps_fix
+                return 0, 0
+        except Exception as e:
+            logging.exception(f"[Sorted-Password-List] Unexpected GPS error: {e}")
+            self.gps_socket = None
+            return 0, 0
+
+    def _update_gps_and_distances(self):
+        current_gps = self._current_gps()
+        if current_gps != (0, 0):
+            self.curr_gps_lat, self.curr_gps_lon = current_gps
+            self.last_gps = current_gps
+            self.last_gps_update = time.time()
+            self.trackgps = True
+        passwords = self._load_passwords()
+        for p in passwords:
+            if self.distance_display:
+                lat, lng, google_maps_link, distance = self._get_location_info(p['ssid'], p['bssid'])
+                p["lat"] = lat
+                p["lng"] = lng
+                p["google_maps_link"] = google_maps_link
+                p["distance"] = distance or "Unknown"
+
     def _get_location_info(self, ssid, bssid):
         ssid = re.sub(r'\W+', '', ssid)
         geojson_file = (f"/home/pi/handshakes/{ssid}_{bssid}.gps.json")
-        geojson_file2 = (f"/root/handshakes/{ssid}_{bssid}.gps.json")
+        distance = None
         if os.path.exists(geojson_file):
             with open(geojson_file, 'r') as geo_file:
                 data = json.load(geo_file)
@@ -407,17 +486,22 @@ class SortedPasswordList(plugins.Plugin):
                 lng = data.get('Longitude') or data.get('location', {}).get('lng')
                 if lat is not None and lng is not None:
                     google_maps_link = f"https://www.google.com/maps?q={lat},{lng}"
-                    return lat, lng, google_maps_link
-        elif os.path.exists(geojson_file2):
-            with open(geojson_file, 'r') as geo_file:
-                data = json.load(geo_file)
-            if data is not None:
-                lat = data.get('Latitude') or data.get('location', {}).get('lat')
-                lng = data.get('Longitude') or data.get('location', {}).get('lng')
-                if lat is not None and lng is not None:
-                    google_maps_link = f"https://www.google.com/maps?q={lat},{lng}"
-                    return lat, lng, google_maps_link
-        return None, None, None
+                    if self.curr_gps_lat != 0 and self.curr_gps_lon != 0:
+                        lat1 = math.radians(self.curr_gps_lat)
+                        lon1 = math.radians(self.curr_gps_lon)
+                        lat2 = math.radians(lat)
+                        lon2 = math.radians(lng)
+                        dlon = lon2 - lon1
+                        dlat = lat2 - lat1
+                        a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+                        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+                        distance = 6371000 * c
+                        if distance >= 1000:
+                            distance = f"{distance/1000:.2f} km"
+                        else:
+                            distance = f"{distance:.0f} m"
+                    return lat, lng, google_maps_link, distance
+        return None, None, None, None
 
     def _get_rssi(self):
         try:
@@ -492,10 +576,13 @@ class SortedPasswordList(plugins.Plugin):
             passwords = self._load_passwords(with_location=False)
             for p in passwords:
                 if self.gps_display:
-                    lat, lng, google_maps_link = self._get_location_info(p['ssid'], p['bssid'])
+                    lat, lng, google_maps_link, distance = self._get_location_info(p['ssid'], p['bssid'])
                     p["lat"] = lat
                     p["lng"] = lng
                     p["google_maps_link"] = google_maps_link
+                if self.distance_display:
+                    p["distance"] = distance or "Unknown"
+                if self.strength_display:
                     p["rssi"] = self.rssi_data.get(p['bssid'], 'Not Nearby')
             return render_template_string(TEMPLATE,
                                           title="Passwords list",
@@ -505,11 +592,18 @@ class SortedPasswordList(plugins.Plugin):
                                           bssid_display=self.bssid_display,
                                           password_display=self.password_display,
                                           origin_display=self.origin_display,
+                                          distance_display=self.distance_display,
                                           gps_display=self.gps_display,
                                           strength_display=self.strength_display
                                           )
 
     def on_ui_setup(self, ui):
+        logging.info("[Sorted-Password-List] Initial GPS update successful")
+        current_gps = self._current_gps()
+        if current_gps != (0, 0):
+            self.curr_gps_lat, self.curr_gps_lon = current_gps
+            self.last_gps = current_gps
+            self.trackgps = True
         self.counter = 0
         if self.show_number:
             pos = None
@@ -525,13 +619,27 @@ class SortedPasswordList(plugins.Plugin):
                         pos = (pos[0], pos[1])
                 except Exception:
                     logging.error("[Sorted-Password-List] Could not process set position, using default.")
-
             if not pos:
                 pos = (0, 98)
-
             ui.add_element("passwords", LabeledValue(color=BLACK, label="Passes:", value="...", position=pos, label_font=fonts.Small, text_font=fonts.Small))
 
     def on_ui_update(self, ui):
+        current_time = time.time()
+        if current_time - self.last_update > 300:
+            logging.info("[Sorted-Password-List] Updating GPS")
+            current_gps = self._current_gps()
+            if current_gps != (0, 0):
+                self.curr_gps_lat, self.curr_gps_lon = current_gps
+                self.last_gps = current_gps
+                self.last_gps_update = current_time
+                self.trackgps = True
+            else:
+                if hasattr(self, 'last_gps') and (current_time - self.last_gps_update) <= 1800:
+                    self.curr_gps_lat, self.curr_gps_lon = self.last_gps
+                else:
+                    self.curr_gps_lat, self.curr_gps_lon = 0, 0
+                    self.trackgps = False
+            self.last_update = current_time
         if self.counter >= 3:
             if self.show_number:
                 passwords = self._load_passwords()
@@ -547,4 +655,10 @@ class SortedPasswordList(plugins.Plugin):
                     ui.remove_element('passwords')
                 except Exception as e:
                     logging.error(f"[Sorted-Password-List] {e}")
+        if self.gps_socket:
+            try:
+                self.gps_socket.close()
+            except:
+                pass
+            self.gps_socket = None
         logging.info(f"[Sorted-Password-List] unloaded")
