@@ -7,6 +7,7 @@
 #     'wlan0',
 #     'ect...'
 # ]
+# main.plugins.IPDisplay.position = "0, 82"
 # main.plugins.IPDisplay.delay_time = 2 # how many seconds to delay cycling devices
 
 from pwnagotchi.ui.components import LabeledValue
@@ -16,11 +17,10 @@ import pwnagotchi.plugins as plugins
 import logging
 import time
 import subprocess
-import ipaddress
 
 class IPDisplay(plugins.Plugin):
     __author__ = 'NeonLightning(thank to NurseJackass and jayofelony)'
-    __version__ = '1.0.0'
+    __version__ = '1.0.1'
     __license__ = 'GPL3'
     __description__ = 'Display IP addresses on the Pwnagotchi UI'
 
@@ -33,12 +33,11 @@ class IPDisplay(plugins.Plugin):
         self.skip_time = 0
 
     def on_loaded(self):
-        if 'delay_time' in self.options:
-            self.skip_time = self.options['delay_time']
-        if 'skip_devices' in self.options:
-            self.device_skip_list = self.options['skip_devices']
-        self.options['skip_devices'] = self.device_skip_list
-        logging.debug("IP Display Plugin loaded.")
+        self.skip_time = self.options.get('delay_time', 2)
+        skip = self.options.get('skip_devices')
+        if skip:
+            self.device_skip_list = skip
+        logging.info("[IPDisplay] plugin loaded")
         
     def on_ready(self, agent):
         self._agent = agent
@@ -46,7 +45,13 @@ class IPDisplay(plugins.Plugin):
         self.ready = True
 
     def on_ui_setup(self, ui):
-        pos1 = (0, 82)
+        try:
+            pos = self.options['position']
+            if isinstance(pos, str):
+                pos = tuple(int(x.strip()) for x in pos.split(','))
+            pos1 = pos
+        except Exception:
+            pos1 = (0, 82)
         ui.add_element('ip1', LabeledValue(color=BLACK, label="", value='Initializing...',
                                            position=pos1, label_font=fonts.Small, text_font=fonts.Small))
 
@@ -61,7 +66,7 @@ class IPDisplay(plugins.Plugin):
     
     def on_ui_update(self, ui):
         try:
-            if time.time() - self.last_update_time < (self.skip_time if self.skip_time else 2):
+            if time.time() - self.last_update_time < self.skip_time:
                 return
             self.last_update_time = time.time()
             self.device_index += 1
@@ -71,16 +76,19 @@ class IPDisplay(plugins.Plugin):
                 return
             if self.device_index >= len(ifaces):
                 self.device_index = 0
-            self.device_index = self.device_index % len(ifaces) # try to fix the index out of bounds 
             current_device = ifaces[self.device_index]
-            if current_device is "bnep0":
-                connected_devices = subprocess.check_output(['hcitool', 'con'])
-                if len(connected_devices) == 0:
-                    return
-                else:
-                    self.device_index += 1
-                    if self.device_index >= len(ifaces):
-                        self.device_index = 0
+            if current_device.startswith("bnep0:"):
+                try:
+                    connected_devices = subprocess.check_output(['hcitool', 'con'], timeout=5)
+                    if b'ACL' not in connected_devices:
+                        self.device_index += 1
+                        if self.device_index >= len(ifaces):
+                            self.device_index = 0
+                        if not ifaces:
+                            return
+                        current_device = ifaces[self.device_index]
+                except Exception:
+                    pass
             ui.set('ip1', f'{current_device}')
         except Exception as e:
             logging.exception(repr(e))   
