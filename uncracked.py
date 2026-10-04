@@ -96,12 +96,16 @@ TEMPLATE = """
     function downloadHandshakespcap() {
         window.location.href = "/plugins/uncracked/download_pcap";
     }
+    function downloadHandshakespcapng() {
+        window.location.href = "/plugins/uncracked/download_pcapng";
+    }
     function downloadHandshakes16800() {
         window.location.href = "/plugins/uncracked/download_16800";
     }
 {% endblock %}
 {% block content %}
     <div class="button-container">
+        <button id="download-btn" onclick="downloadHandshakespcapng()">Download pcapng Handshakes</button>
         <button id="download-btn" onclick="downloadHandshakespcap()">Download pcap Handshakes</button>
         <button id="download-btn" onclick="downloadHandshakes22000()">Download 22000 Handshakes</button>
         <button id="download-btn" onclick="downloadHandshakes16800()">Download 16800 Handshakes</button>
@@ -135,7 +139,7 @@ class Handshake:
 
 class Uncracked(plugins.Plugin):
     __author__ = 'NeonLightning'
-    __version__ = '1.0.5'
+    __version__ = '1.0.6'
     __license__ = 'GPL3'
     __description__ = 'Download handshake not found in wpa-sec from web-ui.'
 
@@ -165,7 +169,7 @@ class Uncracked(plugins.Plugin):
     def find_uncracked_handshakes(self, unique_lines):
         handshakes = []
         try:
-            for ext in ['.pcap', '.16800', '.22000']:
+            for ext in ['.pcap', '.pcapng','.16800', '.22000']:
                 pcapfiles = glob.glob(os.path.join(self.config['bettercap']['handshakes'], f"*{ext}"))
                 for path in pcapfiles:
                     name = os.path.basename(path)[:-len(ext)]
@@ -189,7 +193,7 @@ class Uncracked(plugins.Plugin):
         zip_suffix = f"_{extension}" if extension else ""
         zip_file_path = f"/tmp/handshakes{zip_suffix}.zip"
         logging.info(f"[Uncracked] Compressing and sending {zip_file_path}")
-        default_extensions = ['pcap', '22000', '16800']
+        default_extensions = ['pcap','pcapng','22000', '16800']
         extensions = extension.split(',') if extension else default_extensions
         if os.path.exists(zip_file_path):
             os.remove(zip_file_path)
@@ -252,6 +256,9 @@ class Uncracked(plugins.Plugin):
             elif path == "download_pcap":
                 logging.debug("[Uncracked] Compressing and sending pcap on webhook")
                 return self.compress_and_send("pcap")
+            elif path == "download_pcapng":
+                logging.debug("[Uncracked] Compressing and sending pcapng on webhook")
+                return self.compress_and_send("pcapng")
             elif path == "download_16800":
                 logging.debug("[Uncracked] Compressing and sending 16800 on webhook")
                 return self.compress_and_send("16800")
