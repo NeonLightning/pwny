@@ -433,7 +433,8 @@ class SortedPasswordList(plugins.Plugin):
                 fields = line.split(":")
                 if len(fields) < 4:
                     logging.warning(f"[Sorted-Password-List] skipping malformed entry in {filename}: {line.strip()!r}")
-                    continue                entry = (fields[1], fields[3], fields[4])
+                    continue
+                entry = (fields[1], fields[3], fields[4])
                 if entry not in unique_lines:
                     unique_lines.add(entry)
                     passwords.append({
